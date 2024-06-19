@@ -11,4 +11,7 @@ mkdir build
 cd build
 cmake ..
 multitop.sln
+if %errorlevel% neq 0 (
+        pause
+    )
 exit
