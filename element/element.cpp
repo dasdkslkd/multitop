@@ -13,6 +13,7 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 		data_process(x[i], x[i + nel], x[i + 2 * nel], x[i + 3 * nel], input);
 		input.requires_grad_();
 		auto output = model({ input }).toTensor().data_ptr<float>();
+		memcpy(S + 9 * i, output, 9 * sizeof(float));
 		for (int j = 0; j < 9; ++j)
 		{
 			auto xx = input.clone();
@@ -21,10 +22,10 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 			auto t = torch::zeros({ 9 });
 			t[j] = 1;
 			y.backward(t);
-			dSdx[36 * i + 4 * j] = xx.grad()[0].item().tofloat();
-			dSdx[36 * i + 4 * j + 1] = xx.grad()[1].item().tofloat();
-			dSdx[36 * i + 4 * j + 2] = xx.grad()[2].item().tofloat();
-			dSdx[36 * i + 4 * j + 3] = xx.grad()[3].item().tofloat();
+			dSdx[36 * i + 4 * j] = xx.grad()[0].item().toFloat();
+			dSdx[36 * i + 4 * j + 1] = xx.grad()[1].item().toFloat();
+			dSdx[36 * i + 4 * j + 2] = xx.grad()[2].item().toFloat();
+			dSdx[36 * i + 4 * j + 3] = xx.grad()[3].item().toFloat();
 		}
 	}
 }
