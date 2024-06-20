@@ -25,6 +25,7 @@ file(GLOB_RECURSE headerfile *.h)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/mma)
 include_directories(${CMAKE_SOURCE_DIR}/fem)
+include_directories(${CMAKE_SOURCE_DIR}/element)
 
 add_executable(${PROJECT_NAME} ${sourcefile} ${headerfile})
 

@@ -2,6 +2,7 @@
 #include<iostream>
 #include<fstream>
 #include<Eigen/Core>
+#include<torch/script.h>
 using namespace std;
 
 //class material_base
@@ -17,7 +18,7 @@ using namespace std;
 //		string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
 //		ifstream infile(fname, ios::in);
 //		assert(infile.is_open());
-//		auto data = vector<double>(9*576);
+//		auto data = vector<float>(9*576);
 //		string line;
 //		while (getline(infile, line))
 //		{
@@ -25,13 +26,13 @@ using namespace std;
 //			string cell;
 //			while (getline(ss, cell, ','))
 //			{
-//				double value;
+//				float value;
 //				stringstream(cell) >> value;
 //				data.push_back(value);
 //			}
 //		}
 //		infile.close();
-//		double* ptr = data.data();
+//		float* ptr = data.data();
 //		coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
 //	}
 //
@@ -48,7 +49,7 @@ inline void readcoef()
 	string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
 	ifstream infile(fname, ios::in);
 	assert(infile.is_open());
-	vector<double> data;
+	vector<float> data;
 	data.reserve(9 * 576);
 	string line;
 	while (getline(infile, line))
@@ -57,21 +58,30 @@ inline void readcoef()
 		string cell;
 		while (getline(ss, cell, ','))
 		{
-			double value;
+			float value;
 			stringstream(cell) >> value;
 			data.push_back(value);
 		}
 	}
 	infile.close();
-	double* ptr = data.data();
+	float* ptr = data.data();
 	coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
 }
 
 class spinodal
 {
 public:
+	torch::jit::Module model;
+
 	spinodal()
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
+		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
 	}
+
+	void predict(const float* x, float* S, float* dSdx, int nel);
+
+	void elasticity(const float* S, Eigen::MatrixXd& sk, int nel);
+
+	void sensitivity(const float* dSdx, Eigen::MatrixXd& dskdx, int nel);
 };

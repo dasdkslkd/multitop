@@ -9,8 +9,19 @@ int main()
 	//auto force = Eigen::VectorXd::Constant(fem.ndof, 1);
 	//fem.setforce(force);
 	//fem.solvefem();
+	float* a=new float[10];
+	for (int i = 0; i < 10; ++i)
+		a[i] = 1;
 
-	readcoef();
-	cout << coef;
+	float* b=new float[5];
+	for (int i = 0; i < 5; ++i)
+		b[i] = 0;
+
+	for (int i = 0; i < 10; ++i)
+		cout << a[i] << endl;
+	memcpy(a + 2, b, 4 * 5);
+	for (int i = 0; i < 10; ++i)
+		cout << a[i] << endl;
+
 	return 0;
 }

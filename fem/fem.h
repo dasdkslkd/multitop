@@ -14,7 +14,7 @@ public:
 	int nelx;
 	int nely;
 	int nelz;
-	double volfrac;
+	float volfrac;
 	bool multiobj;
 	int nel;
 	int ndof;
@@ -22,18 +22,21 @@ public:
 	//Eigen::Vector<Eigen::Index,Eigen::Dynamic> freedofs;
 	//Eigen::VectorXi freedofs;
 	vector<int> freedofs;
-	double** x;
-	double** S;
+	vector<int> freeidx;
+	float* x;
+	float* S;
+	float* dSdx;
 	Eigen::VectorXd ik;
 	Eigen::VectorXd jk;
 	Eigen::VectorXd sk;
+	Eigen::VectorXd dskdx;
 	Eigen::VectorXd U;
-	Eigen::MatrixXd Y;
-	Eigen::SparseMatrix<double> K;
-	vector<Eigen::Triplet<double>> trip_list;
-	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+	Eigen::SparseMatrix<float> K;
+	Eigen::SparseMatrix<float> dKdx;
+	vector<Eigen::Triplet<float>> trip_list;
+	Eigen::ConjugateGradient<Eigen::SparseMatrix<float>, Eigen::Lower | Eigen::Upper> cg;
 
-	Femproblem(int nelx, int nely, int nelz, double volfrac, bool multiobj);
+	Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj);
 
 	void setforce(const Eigen::VectorXd& force)
 	{

@@ -1,7 +1,7 @@
 #include "fem.h"
 #include<unordered_set>
 
-Femproblem::Femproblem(int nelx, int nely, int nelz, double volfrac, bool multiobj) :nelx(nelx), nely(nely), nelz(nelz), volfrac(volfrac), multiobj(multiobj)
+Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj) :nelx(nelx), nely(nely), nelz(nelz), volfrac(volfrac), multiobj(multiobj)
 {
 	nel = nelx * nely * nelz;
 	ndof = (1 + nelx) * (1 + nely) * (1 + nelz) * 3;
@@ -28,17 +28,17 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, double volfrac, bool multio
 	}
 	ik = Eigen::kroneckerProduct(cmat, Eigen::MatrixXd::Constant(24, 1, 1)).transpose().reshaped();
 	jk = Eigen::kroneckerProduct(cmat, Eigen::MatrixXd::Constant(1, 24, 1)).transpose().reshaped();
-	//sk = Eigen::VectorXd(24 * 24 * nel);
-	//K = Eigen::SparseMatrix<double>(ndof, ndof);
-	U = Eigen::VectorXd(ndof);
-	Y = Eigen::MatrixXd(nel, 9);
-	F = Eigen::VectorXd(ndof);
-	//trip_list.reserve(24 * 24 * nel);
-	//K.reserve(Eigen::VectorXd::Constant(ndof, 192));
-	x = new double* [nel];
-	for (int i = 0; i < nel; ++i)
-		x[i] = new double[4];
+	sk = Eigen::VectorXd(24 * 24 * nel);
+	dskdx = Eigen::VectorXd(24 * 24 * nel);
 
+	//K = Eigen::SparseMatrix<float>(ndof, ndof);
+	U = Eigen::VectorXd(ndof);
+	F = Eigen::VectorXd(ndof);
+	trip_list.resize(24 * 24 * nel);
+	//K.reserve(Eigen::VectorXd::Constant(ndof, 192));
+	x = new float[nel * 4];
+	S = new float[nel * 9];
+	dSdx = new float[nel * 36];
 }
 
 void Femproblem::setconstrain(vector<int>&& fixeddofs)
@@ -53,21 +53,21 @@ void Femproblem::setconstrain(vector<int>&& fixeddofs)
 		freedofs[i - idx] = i;
 	}
 	unordered_set<int> smallset(freedofs.begin(),freedofs.end());
-	vector<int> idx;
-	idx.reserve(24 * 24 * nel);
+	
+	freeidx.reserve(24 * 24 * nel);
 	for (int i = 0; i < 24 * 24 * nel; ++i)
 	{
 		if (smallset.count(ik(i)) > 0 && smallset.count(jk(i) > 0))
 		{
-			idx.push_back(i);
+			freeidx.push_back(i);
 		}
 	}
-	ik = ik(idx).eval();
-	jk = jk(idx).eval();
-	sk = Eigen::VectorXd(idx.size());
-	U = Eigen::VectorXd(freedofs.size());
-	trip_list.reserve(idx.size());
-	K = Eigen::SparseMatrix<double>(freedofs.size(), freedofs.size());
+	//ik = ik(freeidx).eval();
+	//jk = jk(freeidx).eval();
+	//sk = Eigen::VectorXd(freeidx.size());
+	//U = Eigen::VectorXd(freedofs.size());
+	//trip_list.reserve(freeidx.size());
+	K = Eigen::SparseMatrix<float>(freedofs.size(), freedofs.size());
 	K.reserve(Eigen::VectorXd::Constant(freedofs.size(), 192));
 }
 
@@ -76,12 +76,13 @@ void Femproblem::solvefem()
 #if 1
 	sk = Eigen::VectorXd::Constant(24 * 24 * nel, 1);
 #endif
-	for (int i = 0; i < ik.size(); ++i)
+	for (int i = 0; i < freeidx.size(); ++i)
 	{
-		trip_list.push_back(Eigen::Triplet<double>(ik(i), jk(i), sk(i)));
+		//trip_list.push_back(Eigen::Triplet<float>(ik(i), jk(i), sk(i)));
+		trip_list[i] = Eigen::Triplet<float>(ik(freeidx[i]), jk(freeidx[i]), sk(freeidx[i]));
 	}
 	K.setFromTriplets(trip_list.begin(), trip_list.end());
 	cg.compute(K);
-	U = cg.solve(F(freedofs));
+	U(freedofs) = cg.solve(F(freedofs));
 	cout << cg.iterations() << endl << cg.error();
 }
