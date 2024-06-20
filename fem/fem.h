@@ -22,6 +22,8 @@ public:
 	//Eigen::Vector<Eigen::Index,Eigen::Dynamic> freedofs;
 	//Eigen::VectorXi freedofs;
 	vector<int> freedofs;
+	double** x;
+	double** S;
 	Eigen::VectorXd ik;
 	Eigen::VectorXd jk;
 	Eigen::VectorXd sk;

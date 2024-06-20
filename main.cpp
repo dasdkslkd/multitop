@@ -1,5 +1,6 @@
 #include "fem.h"
 #include "mmasolver.h"
+#include "element/element.h"
 
 int main()
 {
@@ -9,13 +10,7 @@ int main()
 	//fem.setforce(force);
 	//fem.solvefem();
 
-	vector<vector<double>> a = { {1,2,3},{4,5,6},{7,8,9} };
-	vector<double> b = { 1,2,3 };
-	double* d = move(b.data());
-	cout << d << endl;
-	cout << &b << endl;
-	Eigen::MatrixXd c = Eigen::Map<Eigen::Matrix<double,3,1>>(d);
-	cout << &c;
-	cout << c;
+	readcoef();
+	cout << coef;
 	return 0;
 }

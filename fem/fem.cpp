@@ -35,6 +35,10 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, double volfrac, bool multio
 	F = Eigen::VectorXd(ndof);
 	//trip_list.reserve(24 * 24 * nel);
 	//K.reserve(Eigen::VectorXd::Constant(ndof, 192));
+	x = new double* [nel];
+	for (int i = 0; i < nel; ++i)
+		x[i] = new double[4];
+
 }
 
 void Femproblem::setconstrain(vector<int>&& fixeddofs)
