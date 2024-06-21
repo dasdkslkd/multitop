@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 # set(Eigen3_DIR D:\\Environment\\eigen-3.4.0\\cmake)
 include_directories(D:\\Environment\\eigen-3.4.0\\build\\include)
 # package
-find_package(Eigen3 3.4 REQUIRED No_MODULE)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch)
 
 

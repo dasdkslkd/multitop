@@ -81,7 +81,7 @@ public:
 
 	void predict(const float* x, float* S, float* dSdx, int nel);
 
-	void elasticity(const float* S, Eigen::MatrixXd& sk, int nel);
+	void elasticity(float* S, Eigen::VectorXd& sk, int nel);
 
-	void sensitivity(const float* dSdx, Eigen::MatrixXd& dskdx, int nel);
+	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int nel);
 };

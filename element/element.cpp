@@ -10,10 +10,14 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 	for (int i = 0; i < nel; ++i)
 	{
 		at::Tensor input;
+		cout << &input << endl;
 		data_process(x[i], x[i + nel], x[i + 2 * nel], x[i + 3 * nel], input);
+		cout << &input << endl;
 		input.requires_grad_();
-		auto output = model({ input }).toTensor().data_ptr<float>();
-		memcpy(S + 9 * i, output, 9 * sizeof(float));
+		cout << &input << endl;
+		auto output = model({ input }).toTensor();
+		auto data = output.data_ptr<float>();
+		memcpy(S + 9 * i, data, 9 * sizeof(float));
 		for (int j = 0; j < 9; ++j)
 		{
 			auto xx = input.clone();
@@ -30,12 +34,15 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 	}
 }
 
-void spinodal::elasticity(const float* S, Eigen::MatrixXd& sk, int nel)
+void spinodal::elasticity(float* S, Eigen::VectorXd& sk, int nel)
 {
-
+	auto ss = Eigen::Map<Eigen::MatrixXf>(S, 9, nel);
+	for (int i = 0; i < 9; ++i)
+		sk += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
+	cout << sk.rows() << endl << sk.cols();
 }
 
-void spinodal::sensitivity(const float* dSdx, Eigen::MatrixXd& dskdx, int nel)
+void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int nel)
 {
 
 }
