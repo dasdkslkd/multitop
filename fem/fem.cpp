@@ -39,6 +39,9 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiob
 	x = new float[nel * 4];
 	S = new float[nel * 9];
 	dSdx = new float[nel * 36];
+	fill(x, x + 4 * nel, 0.f);
+	fill(S, S + 9 * nel, 0.f);
+	fill(dSdx, dSdx + 36 * nel, 0.f);
 }
 
 void Femproblem::setconstrain(vector<int>&& fixeddofs)
@@ -67,7 +70,7 @@ void Femproblem::setconstrain(vector<int>&& fixeddofs)
 	//sk = Eigen::VectorXd(freeidx.size());
 	//U = Eigen::VectorXd(freedofs.size());
 	//trip_list.reserve(freeidx.size());
-	K = Eigen::SparseMatrix<float>(freedofs.size(), freedofs.size());
+	K = Eigen::SparseMatrix<double>(freedofs.size(), freedofs.size());
 	K.reserve(Eigen::VectorXd::Constant(freedofs.size(), 192));
 }
 
@@ -79,7 +82,7 @@ void Femproblem::solvefem()
 	for (int i = 0; i < freeidx.size(); ++i)
 	{
 		//trip_list.push_back(Eigen::Triplet<float>(ik(i), jk(i), sk(i)));
-		trip_list[i] = Eigen::Triplet<float>(ik(freeidx[i]), jk(freeidx[i]), sk(freeidx[i]));
+		trip_list[i] = Eigen::Triplet<double>(ik(freeidx[i]), jk(freeidx[i]), sk(freeidx[i]));
 	}
 	K.setFromTriplets(trip_list.begin(), trip_list.end());
 	cg.compute(K);

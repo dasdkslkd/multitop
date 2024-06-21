@@ -31,10 +31,10 @@ public:
 	Eigen::VectorXd sk;
 	Eigen::VectorXd dskdx;
 	Eigen::VectorXd U;
-	Eigen::SparseMatrix<float> K;
+	Eigen::SparseMatrix<double> K;
 	Eigen::SparseMatrix<float> dKdx;
-	vector<Eigen::Triplet<float>> trip_list;
-	Eigen::ConjugateGradient<Eigen::SparseMatrix<float>, Eigen::Lower | Eigen::Upper> cg;
+	vector<Eigen::Triplet<double>> trip_list;
+	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
 
 	Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj);
 

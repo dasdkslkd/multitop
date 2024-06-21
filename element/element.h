@@ -43,7 +43,7 @@ using namespace std;
 //	const material_base& operator=(const material_base& instance) = delete;
 //};
 
-inline Eigen::MatrixXd coef;
+inline Eigen::MatrixXf coef;
 inline void readcoef()
 {
 	string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
@@ -65,7 +65,7 @@ inline void readcoef()
 	}
 	infile.close();
 	float* ptr = data.data();
-	coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
+	coef = Eigen::Map<Eigen::MatrixXf>(ptr, 576, 9);
 }
 
 class spinodal

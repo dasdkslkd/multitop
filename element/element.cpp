@@ -2,7 +2,7 @@
 
 inline void data_process(const float &r, const float &t1, const float &t2, const float &t3, at::Tensor& rst)
 {
-	rst = move(torch::tensor({ (r - 0.3) / 0.4,t1 / 90,t2 / 90,t3 / 90 }));
+	rst = move(torch::tensor({ float((r - 0.3) / 0.4),float(t1 / 90),float(t2 / 90),float(t3 / 90) }));
 }
 
 void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
@@ -28,4 +28,14 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 			dSdx[36 * i + 4 * j + 3] = xx.grad()[3].item().toFloat();
 		}
 	}
+}
+
+void spinodal::elasticity(const float* S, Eigen::MatrixXd& sk, int nel)
+{
+
+}
+
+void spinodal::sensitivity(const float* dSdx, Eigen::MatrixXd& dskdx, int nel)
+{
+
 }
