@@ -1,1 +1,3 @@
 build/
+/testbuild
+/environment.yml
