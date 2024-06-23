@@ -1,6 +1,7 @@
 #include "fem.h"
 #include "mmasolver.h"
 #include "element.h"
+#include "mmacontext.h"
 
 int main()
 {
@@ -9,8 +10,9 @@ int main()
 	//auto force = Eigen::VectorXd::Constant(fem.ndof, 1);
 	//fem.setforce(force);
 	//fem.solvefem();
-	spinodal ac;
-	ac.elasticity(fem.S, fem.sk, fem.nel);
+	spinodal ac(fem.nel);
+	mmacontext bb;
+	//ac.elasticity(fem.S, fem.sk);
 
 	
 	return 0;

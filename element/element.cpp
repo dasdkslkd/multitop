@@ -5,7 +5,7 @@ inline void data_process(const float &r, const float &t1, const float &t2, const
 	rst = move(torch::tensor({ float((r - 0.3) / 0.4),float(t1 / 90),float(t2 / 90),float(t3 / 90) }));
 }
 
-void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
+void spinodal::predict(const float* x, float* S, float* dSdx)
 {
 	for (int i = 0; i < nel; ++i)
 	{
@@ -34,15 +34,17 @@ void spinodal::predict(const float* x, float* S, float* dSdx, int nel)
 	}
 }
 
-void spinodal::elasticity(float* S, Eigen::VectorXd& sk, int nel)
+void spinodal::elasticity(float* S, Eigen::VectorXd& sk)
 {
 	auto ss = Eigen::Map<Eigen::MatrixXf>(S, 9, nel);
 	for (int i = 0; i < 9; ++i)
 		sk += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
-	cout << sk.rows() << endl << sk.cols();
 }
 
-void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int nel)
+void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx)
 {
+	for (int i = 0; i < nel; ++i)
+	{
 
+	}
 }
