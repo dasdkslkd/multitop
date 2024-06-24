@@ -1,16 +1,33 @@
 #pragma once
 #include<iostream>
-typedef float Scalar;
+#include "mmasolver.h"
 class mmacontext
 {
 public:
+	
+	int m;
+	int n;
+	float a;
+	float c;
+	float d;
+	float* xval;
+	float f;
+	float* dfdx;
+	float* g;
+	float* dgdx;
+	float* xmin;
+	float* xmax;
+	MMASolver* solver;
 
-	Scalar* xval;
-
-
-	mmacontext()
+	mmacontext(int m,int n,float a,float c,float d,float*xval,float*dfdx,float*g,float* dgdx,float*xmin,float*xmax):m(m),n(n),a(a),c(c),d(d),xval(xval),dfdx(dfdx),g(g),dgdx(dgdx),xmin(xmin),xmax(xmax)
 	{
-		xval = new Scalar[10];
-		std::cout << xval[0];
+		solver = new MMASolver(n, m, a, c, d);
+	}
+
+	~mmacontext() { delete solver; }
+
+	void computef()
+	{
+
 	}
 };

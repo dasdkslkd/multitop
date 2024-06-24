@@ -73,16 +73,21 @@ class spinodal
 public:
 	torch::jit::Module model;
 	int nel;
+	float* temp;
 
 	spinodal(int nel) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
+		temp = new float[9 * nel];
+		fill(temp, temp + 9 * nel, 0.f);
 	}
+
+	~spinodal() { delete[] temp; }
 
 	void predict(const float* x, float* S, float* dSdx);
 
 	void elasticity(float* S, Eigen::VectorXd& sk);
 
-	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx);
+	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i);
 };

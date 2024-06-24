@@ -26,10 +26,10 @@ void spinodal::predict(const float* x, float* S, float* dSdx)
 			auto t = torch::zeros({ 9 });
 			t[j] = 1;
 			y.backward(t);
-			dSdx[36 * i + 4 * j] = xx.grad()[0].item().toFloat();
-			dSdx[36 * i + 4 * j + 1] = xx.grad()[1].item().toFloat();
-			dSdx[36 * i + 4 * j + 2] = xx.grad()[2].item().toFloat();
-			dSdx[36 * i + 4 * j + 3] = xx.grad()[3].item().toFloat();
+			dSdx[36 * i + j] = xx.grad()[0].item().toFloat();
+			dSdx[36 * i + j + 9] = xx.grad()[1].item().toFloat();
+			dSdx[36 * i + j + 18] = xx.grad()[2].item().toFloat();
+			dSdx[36 * i + j + 27] = xx.grad()[3].item().toFloat();
 		}
 	}
 }
@@ -41,10 +41,14 @@ void spinodal::elasticity(float* S, Eigen::VectorXd& sk)
 		sk += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
 }
 
-void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx)
+void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i)
 {
-	for (int i = 0; i < nel; ++i)
-	{
-
-	}
+	// 0<=i<4*nel
+	int q = i / nel;
+	int r = i - q * nel;
+	memcpy(temp + 9 * r, dSdx + 36 * r + 9 * q, 9 * sizeof(float));
+	auto ss = Eigen::Map<Eigen::MatrixXf>(temp, 9, nel);
+	for (int i = 0; i < 9; ++i)
+		dskdx += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
+	fill(temp + 9 * r, temp + 9 * (r + 1), 0.f);
 }
