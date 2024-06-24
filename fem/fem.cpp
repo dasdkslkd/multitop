@@ -1,6 +1,8 @@
 #include "fem.h"
 #include<unordered_set>
 
+extern float my_erfinvf(float a);
+
 Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj) :nelx(nelx), nely(nely), nelz(nelz), volfrac(volfrac), multiobj(multiobj)
 {
 	nel = nelx * nely * nelz;
@@ -88,4 +90,13 @@ void Femproblem::solvefem()
 	cg.compute(K);
 	U(freedofs) = cg.solve(F(freedofs));
 	cout << cg.iterations() << endl << cg.error();
+}
+
+float Femproblem::computef()
+{
+	float f = U.transpose() * F;
+	if (multiobj)
+	{
+		
+	}
 }

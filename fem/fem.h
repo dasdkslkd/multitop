@@ -46,4 +46,6 @@ public:
 	void setconstrain(vector<int>&& fixeddofs);
 
 	void solvefem();
+
+	float computef();
 };
