@@ -65,8 +65,8 @@ float my_logf(float a)
     r = fmaf(i, 0.693147182f, r); //  0x1.62e430p-1 // log(2)
     if (!((a > 0.0f) && (a <= 3.40282346e+38f))) { // 0x1.fffffep+127
         r = a + a;  // silence NaNs if necessary
-        if (a < 0.0f) r = (0.0f / 0.0f); //  NaN
-        if (a == 0.0f) r = (-1.0f / 0.0f); // -Inf
+        //if (a < 0.0f) r = (0.0f / 0.0f); //  NaN
+        //if (a == 0.0f) r = (-1.0f / 0.0f); // -Inf
     }
     return r;
 }

@@ -6,6 +6,8 @@
 #include<eigen3/unsupported/Eigen/KroneckerProduct>
 #include<iostream>
 #include<algorithm>
+#include "element.h"
+#define PI acos(-1.f)
 using namespace std;
 
 class Femproblem
@@ -26,17 +28,21 @@ public:
 	float* x;
 	float* S;
 	float* dSdx;
-	Eigen::VectorXd ik;
-	Eigen::VectorXd jk;
+	Eigen::VectorXi ik;
+	Eigen::VectorXi jk;
 	Eigen::VectorXd sk;
 	Eigen::VectorXd dskdx;
 	Eigen::VectorXd U;
 	Eigen::SparseMatrix<double> K;
 	Eigen::SparseMatrix<float> dKdx;
 	vector<Eigen::Triplet<double>> trip_list;
+	vector<Eigen::Triplet<float>> trip_forsk;
 	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+	spinodal elem;
 
 	Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj);
+
+	~Femproblem();
 
 	void setforce(const Eigen::VectorXd& force)
 	{
@@ -47,5 +53,5 @@ public:
 
 	void solvefem();
 
-	float computef();
+	void computefdf(float& f, float* dfdx);
 };

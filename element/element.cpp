@@ -10,11 +10,8 @@ void spinodal::predict(const float* x, float* S, float* dSdx)
 	for (int i = 0; i < nel; ++i)
 	{
 		at::Tensor input;
-		cout << &input << endl;
 		data_process(x[i], x[i + nel], x[i + 2 * nel], x[i + 3 * nel], input);
-		cout << &input << endl;
 		input.requires_grad_();
-		cout << &input << endl;
 		auto output = model({ input }).toTensor();
 		auto data = output.data_ptr<float>();
 		memcpy(S + 9 * i, data, 9 * sizeof(float));

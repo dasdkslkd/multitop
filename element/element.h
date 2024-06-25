@@ -75,7 +75,9 @@ public:
 	int nel;
 	float* temp;
 
-	spinodal(int nel) :nel(nel)
+
+
+	spinodal(int nel = 0) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
