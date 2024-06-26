@@ -12,7 +12,8 @@ void spinodal::predict(const float* x, float* S, float* dSdx)
 		at::Tensor input;
 		data_process(x[i], x[i + nel], x[i + 2 * nel], x[i + 3 * nel], input);
 		input.requires_grad_();
-		auto output = model({ input }).toTensor();
+		auto output = model.forward(vector<torch::jit::IValue>({ input })).toTensor();
+		//auto output = model({ input }).toTensor();
 		auto data = output.data_ptr<float>();
 		memcpy(S + 9 * i, data, 9 * sizeof(float));
 		for (int j = 0; j < 9; ++j)

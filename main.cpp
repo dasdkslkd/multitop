@@ -20,10 +20,8 @@ int main()
 		force[((nelx - 1) * nely * nelz + i) * 3 + 2] = -1;
 	}
 	fem.setforce(force);
-
 	fem.elem.predict(fem.x, fem.S, fem.dSdx);
 	fem.elem.elasticity(fem.S, fem.sk);
-
 	fem.solvefem();
 
 	//fem.setconstrain(vector<int>({ 3, 2, 1 }));

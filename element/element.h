@@ -76,8 +76,7 @@ public:
 	float* temp;
 
 
-
-	spinodal(int nel = 0) :nel(nel)
+	spinodal(int nel=0) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
@@ -85,7 +84,19 @@ public:
 		fill(temp, temp + 9 * nel, 0.f);
 	}
 
-	~spinodal() { delete[] temp; }
+	~spinodal() { 
+		delete[] temp;
+	}
+
+	spinodal& operator=(const spinodal& inst)
+	{
+		model = inst.model;
+		nel = inst.nel;
+		delete[] temp;
+		temp = new float[9 * inst.nel];
+		copy(inst.temp, inst.temp + inst.nel, temp);
+		return *this;
+	}
 
 	void predict(const float* x, float* S, float* dSdx);
 
