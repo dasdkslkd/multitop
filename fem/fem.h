@@ -30,6 +30,8 @@ public:
 	float* dSdx;
 	Eigen::VectorXi ik;
 	Eigen::VectorXi jk;
+	Eigen::VectorXi ikfree;
+	Eigen::VectorXi jkfree;
 	Eigen::VectorXd sk;
 	Eigen::VectorXd dskdx;
 	Eigen::VectorXd U;
