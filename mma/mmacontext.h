@@ -18,18 +18,20 @@ public:
 	float* dgdx;//mxn,col major
 	float* xmin;
 	float* xmax;
-	MMASolver* solver;
+	MMASolver solver;
+	Femproblem* pfem;
 
-	mmacontext(int m,int n,float a,float c,float d,float*xval,float*dfdx,float*g,float* dgdx,float*xmin,float*xmax):m(m),n(n),a(a),c(c),d(d),xval(xval),dfdx(dfdx),g(g),dgdx(dgdx),xmin(xmin),xmax(xmax)
-	{
-		solver = new MMASolver(n, m, a, c, d);
-	}
+	//mmacontext(int m,int n,float a,float c,float d,float*xval,float*dfdx,float*g,float* dgdx,float*xmin,float*xmax):m(m),n(n),a(a),c(c),d(d),xval(xval),dfdx(dfdx),g(g),dgdx(dgdx),xmin(xmin),xmax(xmax)
+	//{
+	//	MMASolver solver();
+	//}
 
-	mmacontext(Femproblem fem)
+	mmacontext(Femproblem& fem)
 	{
+		pfem = &fem;
 		m = 1 + 2 * fem.nel;
 		n = 4 * fem.nel;
-		solver = new MMASolver(n, m);
+		solver = MMASolver(n, m);
 		float theta_min = PI / 18;
 		xval = fem.x;
 		g = new float[m];
@@ -64,14 +66,15 @@ public:
 
 	~mmacontext()
 	{ 
-		delete solver;
 		delete g;
 		delete dgdx;
 		delete dfdx;
+		delete xmin;
+		delete xmax;
 	}
 
-	void computefdf(Femproblem fem)
+	void computefdf()
 	{
-		fem.computefdf(f, dfdx);
+		pfem->computefdf(f, dfdx);
 	}
 };

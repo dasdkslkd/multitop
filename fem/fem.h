@@ -46,6 +46,8 @@ public:
 
 	~Femproblem();
 
+	//Femproblem(const Femproblem& fem);
+
 	void setforce(const Eigen::VectorXd& force)
 	{
 		F = force;
