@@ -4,11 +4,11 @@
 #include<Eigen/SparseCore>
 #include<Eigen/IterativeLinearSolvers>
 #include<eigen3/unsupported/Eigen/KroneckerProduct>
-#include<iostream>
-#include<algorithm>
+//#include<iostream>
+//#include<algorithm>
 #include "element.h"
-#define PI acos(-1.f)
-using namespace std;
+//#define PI acos(-1.f)
+//using namespace std;
 
 class Femproblem
 {
@@ -46,8 +46,6 @@ public:
 
 	~Femproblem();
 
-	//Femproblem(const Femproblem& fem);
-
 	void setforce(const Eigen::VectorXd& force)
 	{
 		F = force;
@@ -57,5 +55,6 @@ public:
 
 	void solvefem();
 
+	//计算目标函数及其导数
 	void computefdf(float& f, float* dfdx);
 };

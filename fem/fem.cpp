@@ -36,10 +36,11 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiob
 	dskdx = Eigen::VectorXd::Constant(24 * 24 * nel, 0);
 
 	//K = Eigen::SparseMatrix<float>(ndof, ndof);
-	U = Eigen::VectorXd(ndof);
+	U = Eigen::VectorXd::Constant(ndof,0);
 	F = Eigen::VectorXd(ndof);
 	//trip_list.resize(24 * 24 * nel);
 	trip_forsk.resize(24 * 24 * nel);
+	dKdx = Eigen::SparseMatrix<float>(ndof, ndof);
 	//K.reserve(Eigen::VectorXd::Constant(ndof, 192));
 	x = new float[nel * 4];
 	S = new float[nel * 9];
@@ -125,6 +126,7 @@ void Femproblem::solvefem()
 
 void Femproblem::computefdf(float& f, float* dfdx)
 {
+	cout << U << endl;
 	f = U.transpose() * F;
 
 	float sum = 0;
@@ -138,7 +140,7 @@ void Femproblem::computefdf(float& f, float* dfdx)
 		dKdx.setFromTriplets(trip_forsk.begin(), trip_forsk.end());
 		dfdx[i] = -U.cast<float>().transpose() * dKdx * U.cast<float>();
 
-		if (i < nel && x[i] > 1e-3f)
+		if (multiobj && i < nel && x[i] > 1e-3f)
 		{
 			sum += exp(-pow(my_erfinvf(2 * x[i] - 1), 2));
 			dfdx[i] += 400 / sqrtf(3.f * PI) / nel * my_erfinvf(2 * x[i] - 1);

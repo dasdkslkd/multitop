@@ -50,3 +50,17 @@ void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i)
 		dskdx += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
 	fill(temp + 9 * r, temp + 9 * (r + 1), 0.f);
 }
+
+void spinodal::filter(float* x)
+{
+	static float rho_min = 0.3f;
+	static float theta_min = PI / 18;
+	static float lam1 = 600.f;
+	static float lam2 = 60 * 180 / PI;
+	for (int i = 0; i < nel; ++i)
+	{
+		x[i] /= (1 + exp(-lam1 * (x[i] - rho_min)));
+		x[i + nel] = max(x[i + nel], theta_min) / (1 + exp(-lam2 * (x[i + nel] - theta_min / 2)));
+	}
+
+}

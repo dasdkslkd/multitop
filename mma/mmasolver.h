@@ -71,6 +71,8 @@ public:
 
 	void Reset() { iter = 0; };
 
+	friend class mmacontext;
+
 private:
 	int n, m, iter;
 

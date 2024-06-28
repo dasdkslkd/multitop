@@ -1,8 +1,9 @@
 #pragma once
-#include<iostream>
+//#include<iostream>
 #include<fstream>
 #include<Eigen/Core>
 #include<torch/script.h>
+#define PI acos(-1.f)
 using namespace std;
 
 //class material_base
@@ -103,4 +104,6 @@ public:
 	void elasticity(float* S, Eigen::VectorXd& sk);
 
 	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i);
+
+	void filter(float* x);
 };

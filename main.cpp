@@ -22,6 +22,7 @@ int main()
 	//fem.elem.elasticity(fem.S, fem.sk);
 	//fem.solvefem();
 	mmacontext mma(fem);
+	mma.solve();
 
 	//fem.setconstrain(vector<int>({ 3, 2, 1 }));
 	//auto force = Eigen::VectorXd::Constant(fem.ndof, 1);
