@@ -60,16 +60,17 @@ Femproblem::~Femproblem()
 inline Eigen::VectorXi remap(vector<int>& freeidx, Eigen::VectorXi& a)
 {
 	auto b = a(freeidx);
-	map<int, int> map;
+	map<int, vector<int>> map;
+	for (int i = 0; i < b.rows(); ++i)
+		map[b(i)].push_back(i);
 	int val_now = 0;
-	for (int i = 0; i < b.rows(); ++i)
-		if (map.find(b(i)) == map.end())
-			map[b(i)] = val_now++;
-
-	Eigen::VectorXi rst(b.rows());
-	for (int i = 0; i < b.rows(); ++i)
-		rst(i) = map[b(i)];
-	return rst;
+	for (auto& [num, indices] : map)
+	{
+		for (int idx : indices)
+			b(idx) = val_now;
+		++val_now;
+	}
+	return b;
 }
 
 void Femproblem::setconstrain(vector<int>&& fixeddofs)
@@ -118,6 +119,14 @@ void Femproblem::solvefem()
 		//trip_list.push_back(Eigen::Triplet<float>(ik(i), jk(i), sk(i)));
 		trip_list[i] = Eigen::Triplet<double>(ikfree(i), jkfree(i), sk(freeidx[i]));
 	}
+
+	//vector<Eigen::Triplet<double>> temp;
+	//for (int i = 0; i < 24 * 24 * nel; ++i)
+	//	temp.push_back(Eigen::Triplet<double>(ik(i), jk(i), sk(i)));
+	//Eigen::SparseMatrix<double> tempK(ndof, ndof);
+	//tempK.setFromTriplets(temp.begin(), temp.end());
+	//auto tt = tempK.toDense();
+
 	K.setFromTriplets(trip_list.begin(), trip_list.end());
 	cg.compute(K);
 	U(freedofs) = cg.solve(F(freedofs));
@@ -126,9 +135,10 @@ void Femproblem::solvefem()
 
 void Femproblem::computefdf(float& f, float* dfdx)
 {
-	cout << U << endl;
 	f = U.transpose() * F;
-
+	extern void savemat(string fileName, Eigen::MatrixXd matrix);
+	savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\u.csv", U);
+	savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\f.csv", F);
 	float sum = 0;
 	for (int i = 0; i < 4 * nel; ++i)
 	{

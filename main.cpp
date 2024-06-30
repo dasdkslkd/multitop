@@ -12,7 +12,7 @@ int main()
 	for (int i = 0; i < cons.size(); ++i)
 		cons[i] = i;
 	fem.setconstrain(move(cons));
-	Eigen::VectorXd force(fem.ndof);
+	Eigen::VectorXd force=Eigen::VectorXd::Constant(fem.ndof,0);
 	for (int i = 0; i < nely; ++i)
 	{
 		force[((nelx - 1) * nely * nelz + i) * 3 + 2] = -1;
