@@ -13,22 +13,12 @@ int main()
 		cons[i] = i;
 	fem.setconstrain(move(cons));
 	Eigen::VectorXd force=Eigen::VectorXd::Constant(fem.ndof,0);
-	for (int i = 0; i < nely; ++i)
+	for (int i = 0; i <= nely; ++i)
 	{
-		force[((nelx - 1) * nely * nelz + i) * 3 + 2] = -1;
+		force[(nelx * (nely + 1) * (nelz + 1) + i) * 3 + 2] = -1;
 	}
 	fem.setforce(force);
-	//fem.elem.predict(fem.x, fem.S, fem.dSdx);
-	//fem.elem.elasticity(fem.S, fem.sk);
-	//fem.solvefem();
 	mmacontext mma(fem);
 	mma.solve();
-
-	//fem.setconstrain(vector<int>({ 3, 2, 1 }));
-	//auto force = Eigen::VectorXd::Constant(fem.ndof, 1);
-	//fem.setforce(force);
-	//fem.solvefem();
-
-
 	return 0;
 }

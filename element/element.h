@@ -3,6 +3,7 @@
 #include<fstream>
 #include<Eigen/Core>
 #include<torch/script.h>
+#include "matrixIO.h"
 #define PI acos(-1.f)
 using namespace std;
 
@@ -77,7 +78,7 @@ public:
 	float* temp;
 
 
-	spinodal(int nel=0) :nel(nel)
+	spinodal(int nel = 0) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
@@ -95,7 +96,7 @@ public:
 		nel = inst.nel;
 		delete[] temp;
 		temp = new float[9 * inst.nel];
-		copy(inst.temp, inst.temp + inst.nel, temp);
+		copy(inst.temp, inst.temp + 9 * inst.nel, temp);
 		return *this;
 	}
 

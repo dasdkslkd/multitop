@@ -111,7 +111,9 @@ public:
 			for (int i = 0; i < n; ++i)
 				logger.change = max(logger.change, fabs(xval[i] - solver.xold1[i]));
 			printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", solver.iter, f, (g[m - 1] + 1) * pfem->volfrac, logger.change);
+			logger.flist[solver.iter] = f;
+			if (solver.iter == 1)
+				break;
 		}
-		logger.flist[solver.iter] = f;
 	}
 };

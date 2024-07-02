@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(multitop)
-# set(CMAKE_BUILD_TYPE RELEASE)
+set(CMAKE_BUILD_TYPE RELEASE)
 
 # compile options
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -11,7 +11,8 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(D:\\Environment\\eigen-3.4.0\\build\\include)
 # package
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
-find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch)
+find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch-release)
+find_package(OpenMP REQUIRED)
 
 
 # complile files
@@ -35,3 +36,4 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_ENVIRONMENT "PATH=D:\\E
 # libtorch	
 target_link_libraries(${PROJECT_NAME} ${TORCH_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX)

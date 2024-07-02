@@ -7,6 +7,7 @@ inline void data_process(const float &r, const float &t1, const float &t2, const
 
 void spinodal::predict(const float* x, float* S, float* dSdx)
 {
+//#pragma omp parallel for
 	for (int i = 0; i < nel; ++i)
 	{
 		at::Tensor input;
@@ -34,6 +35,7 @@ void spinodal::predict(const float* x, float* S, float* dSdx)
 void spinodal::elasticity(float* S, Eigen::VectorXd& sk)
 {
 	auto ss = Eigen::Map<Eigen::MatrixXf>(S, 9, nel);
+	sk.setZero();
 	for (int i = 0; i < 9; ++i)
 		sk += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
 }
@@ -45,8 +47,9 @@ void spinodal::sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i)
 	int r = i - q * nel;
 	memcpy(temp + 9 * r, dSdx + 36 * r + 9 * q, 9 * sizeof(float));
 	auto ss = Eigen::Map<Eigen::MatrixXf>(temp, 9, nel);
+	dskdx.setZero();
 	for (int i = 0; i < 9; ++i)
-		dskdx += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
+		dskdx += (coef.col(i) * ss.row(i)).cast<double>().reshaped();	
 	fill(temp + 9 * r, temp + 9 * (r + 1), 0.f);
 }
 

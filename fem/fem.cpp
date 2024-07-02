@@ -1,6 +1,7 @@
 #include "fem.h"
 #include<unordered_set>
 #include<map>
+#include<omp.h>
 
 extern float my_erfinvf(float a);
 
@@ -36,7 +37,7 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiob
 	dskdx = Eigen::VectorXd::Constant(24 * 24 * nel, 0);
 
 	//K = Eigen::SparseMatrix<float>(ndof, ndof);
-	U = Eigen::VectorXd::Constant(ndof,0);
+	U = Eigen::VectorXd::Constant(ndof, 0);
 	F = Eigen::VectorXd(ndof);
 	//trip_list.resize(24 * 24 * nel);
 	trip_forsk.resize(24 * 24 * nel);
@@ -119,15 +120,8 @@ void Femproblem::solvefem()
 		//trip_list.push_back(Eigen::Triplet<float>(ik(i), jk(i), sk(i)));
 		trip_list[i] = Eigen::Triplet<double>(ikfree(i), jkfree(i), sk(freeidx[i]));
 	}
-
-	//vector<Eigen::Triplet<double>> temp;
-	//for (int i = 0; i < 24 * 24 * nel; ++i)
-	//	temp.push_back(Eigen::Triplet<double>(ik(i), jk(i), sk(i)));
-	//Eigen::SparseMatrix<double> tempK(ndof, ndof);
-	//tempK.setFromTriplets(temp.begin(), temp.end());
-	//auto tt = tempK.toDense();
-
 	K.setFromTriplets(trip_list.begin(), trip_list.end());
+	//savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\ffree.csv", F(freedofs));
 	cg.compute(K);
 	U(freedofs) = cg.solve(F(freedofs));
 	cout << cg.iterations() << ' ' << cg.error() << endl;
@@ -136,16 +130,18 @@ void Femproblem::solvefem()
 void Femproblem::computefdf(float& f, float* dfdx)
 {
 	f = U.transpose() * F;
-	extern void savemat(string fileName, Eigen::MatrixXd matrix);
-	savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\u.csv", U);
-	savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\f.csv", F);
 	float sum = 0;
+	auto starto = omp_get_wtime();
+	auto startc = clock();
 	for (int i = 0; i < 4 * nel; ++i)
 	{
 		elem.sensitivity(dSdx, dskdx, i);
+		//#pragma omp parallel for num_threads(4)
 		for (int j = 0; j < 24 * 24 * nel; ++j)
 		{
 			trip_forsk[j] = Eigen::Triplet<float>(ik(j), jk(j), dskdx(j));
+			if (i==0&&j < 5)
+				cout << omp_get_thread_num() << ' ' << j << endl;
 		}
 		dKdx.setFromTriplets(trip_forsk.begin(), trip_forsk.end());
 		dfdx[i] = -U.cast<float>().transpose() * dKdx * U.cast<float>();
@@ -156,5 +152,9 @@ void Femproblem::computefdf(float& f, float* dfdx)
 			dfdx[i] += 400 / sqrtf(3.f * PI) / nel * my_erfinvf(2 * x[i] - 1);
 		}
 	}
+	auto endo = omp_get_wtime();
+	auto endc = clock();
+	cout << endo - starto << endl;
+	cout << (endc - startc) / CLOCKS_PER_SEC << endl;
 	f -= 200 / sqrtf(3) / PI / nel * sum;
 }
