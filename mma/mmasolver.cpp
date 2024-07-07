@@ -269,19 +269,21 @@ void MMASolver::DualHess(float* x) {
 
 	// Create the matrix/matrix/matrix product: PQ^T * diag(df2) * PQ
 	float* tmp = new float[n * m];
-	for (int j = 0; j < m; j++) {
+	std::fill(tmp, tmp + n * m, 0.f);
 #ifdef MMA_WITH_OPENMP
 #pragma omp parallel for
 #endif
+	for (int j = 0; j < m; j++) {
 		for (int i = 0; i < n; i++) {
-			tmp[j * n + i] = 0.0;
 			tmp[j * n + i] += PQ[i * m + j] * df2[i];
 		}
 	}
-
+	std::fill(hess.begin(), hess.end(), 0.f);
+#ifdef MMA_WITH_OPENMP
+#pragma omp parallel for
+#endif
 	for (int i = 0; i < m; i++) {
 		for (int j = 0; j < m; j++) {
-			hess[i * m + j] = 0.0;
 			for (int k = 0; k < n; k++) {
 				hess[i * m + j] += tmp[i * n + k] * PQ[k * m + j];
 			}

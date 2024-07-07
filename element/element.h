@@ -104,7 +104,7 @@ public:
 
 	void elasticity(float* S, Eigen::VectorXd& sk);
 
-	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int i);
+	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int &i);
 
 	void filter(float* x);
 };

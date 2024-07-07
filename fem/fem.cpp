@@ -1,7 +1,6 @@
 #include "fem.h"
 #include<unordered_set>
 #include<map>
-#include<omp.h>
 
 extern float my_erfinvf(float a);
 
@@ -131,18 +130,14 @@ void Femproblem::computefdf(float& f, float* dfdx)
 {
 	f = U.transpose() * F;
 	float sum = 0;
-	auto starto = omp_get_wtime();
-	auto startc = clock();
 	for (int i = 0; i < 4 * nel; ++i)
 	{
 		elem.sensitivity(dSdx, dskdx, i);
-		//#pragma omp parallel for num_threads(4)
+#pragma omp parallel for
 		for (int j = 0; j < 24 * 24 * nel; ++j)
 		{
-			trip_forsk[j] = Eigen::Triplet<float>(ik(j), jk(j), dskdx(j));
-			if (i==0&&j < 5)
-				cout << omp_get_thread_num() << ' ' << j << endl;
-		}
+			trip_forsk[j] = Eigen::Triplet<float>(ik[j], jk[j], dskdx[j]);
+		}	
 		dKdx.setFromTriplets(trip_forsk.begin(), trip_forsk.end());
 		dfdx[i] = -U.cast<float>().transpose() * dKdx * U.cast<float>();
 
@@ -152,9 +147,5 @@ void Femproblem::computefdf(float& f, float* dfdx)
 			dfdx[i] += 400 / sqrtf(3.f * PI) / nel * my_erfinvf(2 * x[i] - 1);
 		}
 	}
-	auto endo = omp_get_wtime();
-	auto endc = clock();
-	cout << endo - starto << endl;
-	cout << (endc - startc) / CLOCKS_PER_SEC << endl;
 	f -= 200 / sqrtf(3) / PI / nel * sum;
 }
