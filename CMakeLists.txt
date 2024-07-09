@@ -12,10 +12,27 @@ set(CMAKE_CXX_STANDARD 17)
 # set(Eigen3_DIR D:\\Environment\\eigen-3.4.0\\cmake)
 include_directories(D:\\Environment\\eigen-3.4.0\\build\\include)
 # package
+enable_language(CUDA)
+find_package(CUDA REQUIRED)
+find_library(CUDA_DRIVER_LIBRARY
+             NAMES cuda_driver cuda
+             HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+                   ENV CUDA_PATH
+             PATH_SUFFIXES nvidia/current lib64 lib/x64 lib)
+if (NOT CUDA_DRIVER_LIBRARY)
+    # Don't try any stub directories until we have exhausted all other search locations.
+    find_library(CUDA_DRIVER_LIBRARY
+                 NAMES cuda_driver cuda
+                 HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+                       ENV CUDA_PATH
+                 PATH_SUFFIXES lib64/stubs lib/x64/stubs lib/stubs stubs)
+endif ()
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch)
 find_package(OpenMP REQUIRED)
 
+# compile lib
+# add_subdirectory(mma-g)
 
 # complile files
 # file(GLOB_RECURSE sourcefile *.cpp)
@@ -36,7 +53,7 @@ add_executable(${PROJECT_NAME} ${sourcefile})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_ENVIRONMENT "PATH=D:\\Environment\\libtorch\\lib;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugCRT;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugOpenMP")
 
-# libtorch	
+# link	
 target_link_libraries(${PROJECT_NAME} ${TORCH_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX)
