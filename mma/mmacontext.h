@@ -7,26 +7,26 @@ class mmacontext
 public:
 	int m;
 	int n;
-	float* xval;
-	float f;
-	float* dfdx;
-	float* g;
-	float* dgdx;//mxn,col major
-	float* xmin;
-	float* xmax;
+	double* xval;
+	double f;
+	double* dfdx;
+	double* g;
+	double* dgdx;//mxn,col major
+	double* xmin;
+	double* xmax;
 	MMASolver solver;
 	Femproblem* pfem;
 
 	struct
 	{
-		float change;
-		float minf;
+		double change;
+		double minf;
 		int maxiter;
 		int miniter;
-		float* flist;
+		double* flist;
 	}logger;
 
-	//mmacontext(int m,int n,float a,float c,float d,float*xval,float*dfdx,float*g,float* dgdx,float*xmin,float*xmax):m(m),n(n),a(a),c(c),d(d),xval(xval),dfdx(dfdx),g(g),dgdx(dgdx),xmin(xmin),xmax(xmax)
+	//mmacontext(int m,int n,double a,double c,double d,double*xval,double*dfdx,double*g,double* dgdx,double*xmin,double*xmax):m(m),n(n),a(a),c(c),d(d),xval(xval),dfdx(dfdx),g(g),dgdx(dgdx),xmin(xmin),xmax(xmax)
 	//{
 	//	MMASolver solver();
 	//}
@@ -37,17 +37,17 @@ public:
 		logger.maxiter = maxiter;
 		logger.miniter = 1;
 		logger.minf = 1e+9f;
-		logger.flist = new float[logger.maxiter];
+		logger.flist = new double[logger.maxiter];
 		pfem = &fem;
 		m = 1 + 2 * pfem->nel;
 		n = 4 * pfem->nel;
 		solver = MMASolver(n, m);
 		xval = pfem->x;
-		g = new float[m];
-		dgdx = new float[m * n];
-		dfdx = new float[n];
-		xmin = new float[n];
-		xmax = new float[n];
+		g = new double[m];
+		dgdx = new double[m * n];
+		dfdx = new double[n];
+		xmin = new double[n];
+		xmax = new double[n];
 
 		fill(g, g + m, 0.f);
 		fill(dgdx, dgdx + m * n, 0.f);
@@ -69,7 +69,7 @@ public:
 
 	void computegdg()
 	{
-		static float theta_min = PI / 18;
+		static double theta_min = PI / 18;
 		g[m - 1] = accumulate(xval, xval + pfem->nel, 0.f) / pfem->nel / pfem->volfrac - 1;
 		for (int i = 0; i < pfem->nel; ++i)
 		{

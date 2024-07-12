@@ -58,16 +58,16 @@
 class MMASolver {
 
 public:
-	MMASolver(int n = 0, int m = 0, float a = 0.0, float c = 1000.0, float d = 0.0);
+	MMASolver(int n = 0, int m = 0, double a = 0.0, double c = 1000.0, double d = 0.0);
 
 	MMASolver& operator=(const MMASolver& ins);
 
-	void SetAsymptotes(float init, float decrease, float increase);
+	void SetAsymptotes(double init, double decrease, double increase);
 
 	void ConstraintModification(bool conMod) {}
 
-	void Update(float* xval, const float* dfdx, const float* gx, const float* dgdx, const float* xmin,
-		const float* xmax);
+	void Update(double* xval, const double* dfdx, const double* gx, const double* dgdx, const double* xmin,
+		const double* xmax);
 
 	void Reset() { iter = 0; };
 
@@ -76,35 +76,35 @@ public:
 private:
 	int n, m, iter;
 
-	const float xmamieps;
-	float epsimin;
+	const double xmamieps;
+	double epsimin;
 
-	const float raa0;
-	const float move, albefa;
-	float asyminit, asymdec, asyminc;
+	const double raa0;
+	const double move, albefa;
+	double asyminit, asymdec, asyminc;
 
-	std::vector<float> a, c, d;
-	std::vector<float> y;
-	float z;
+	std::vector<double> a, c, d;
+	std::vector<double> y;
+	double z;
 
-	std::vector<float> lam, mu, s;
-	std::vector<float> low, upp, alpha, beta, p0, q0, pij, qij, b, grad, hess;
+	std::vector<double> lam, mu, s;
+	std::vector<double> low, upp, alpha, beta, p0, q0, pij, qij, b, grad, hess;
 
-	std::vector<float> xold1, xold2;
+	std::vector<double> xold1, xold2;
 
-	void GenSub(const float* xval, const float* dfdx, const float* gx, const float* dgdx, const float* xmin,
-		const float* xmax);
+	void GenSub(const double* xval, const double* dfdx, const double* gx, const double* dgdx, const double* xmin,
+		const double* xmax);
 
-	void SolveDSA(float* x);
-	void SolveDIP(float* x);
+	void SolveDSA(double* x);
+	void SolveDIP(double* x);
 
-	void XYZofLAMBDA(float* x);
+	void XYZofLAMBDA(double* x);
 
-	void DualGrad(float* x);
-	void DualHess(float* x);
+	void DualGrad(double* x);
+	void DualHess(double* x);
 	void DualLineSearch();
-	float DualResidual(float* x, float epsi);
+	double DualResidual(double* x, double epsi);
 
-	static void Factorize(float* K, int n);
-	static void Solve(float* K, float* x, int n);
+	static void Factorize(double* K, int n);
+	static void Solve(double* K, double* x, int n);
 };

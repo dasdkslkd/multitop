@@ -30,7 +30,7 @@
 // PUBLIC
 ////////////////////////////////////////////////////////////////////////////////
 
-MMASolver::MMASolver(int nn, int mm, float ai, float ci, float di)
+MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
 	: n(nn)
 	, m(mm)
 	, iter(0)
@@ -91,7 +91,7 @@ MMASolver& MMASolver::operator=(const MMASolver& ins)
 	return *this;
 }
 
-void MMASolver::SetAsymptotes(float init, float decrease, float increase) {
+void MMASolver::SetAsymptotes(double init, double decrease, double increase) {
 
 	// asymptotes initialization and increase/decrease
 	asyminit = init;
@@ -99,8 +99,8 @@ void MMASolver::SetAsymptotes(float init, float decrease, float increase) {
 	asyminc = increase;
 }
 
-void MMASolver::Update(float* xval, const float* dfdx, const float* gx, const float* dgdx,
-	const float* xmin, const float* xmax)
+void MMASolver::Update(double* xval, const double* dfdx, const double* gx, const double* dgdx,
+	const double* xmin, const double* xmax)
 {
 	// Generate the subproblem
 	GenSub(xval, dfdx, gx, dgdx, xmin, xmax);
@@ -120,16 +120,16 @@ void MMASolver::Update(float* xval, const float* dfdx, const float* gx, const fl
 // PRIVATE
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMASolver::SolveDIP(float* x) {
+void MMASolver::SolveDIP(double* x) {
 
 	for (int j = 0; j < m; j++) {
 		lam[j] = c[j] / 2.0;
 		mu[j] = 1.0;
 	}
 
-	const float tol = epsimin; // 1.0e-9*sqrt(m+n);
-	float epsi = 1.0;
-	float err = 1.0;
+	const double tol = epsimin; // 1.0e-9*sqrt(m+n);
+	double epsi = 1.0;
+	double err = 1.0;
 	int loop;
 
 	while (epsi > tol) {
@@ -175,33 +175,33 @@ void MMASolver::SolveDIP(float* x) {
 	}
 }
 
-void MMASolver::SolveDSA(float* x) {
+void MMASolver::SolveDSA(double* x) {
 
 	for (int j = 0; j < m; j++) {
 		lam[j] = 1.0;
 	}
 
-	const float tol = epsimin; // 1.0e-9*sqrt(m+n);
-	float err = 1.0;
+	const double tol = epsimin; // 1.0e-9*sqrt(m+n);
+	double err = 1.0;
 	int loop = 0;
 
 	while (err > tol && loop < 500) {
 		loop++;
 		XYZofLAMBDA(x);
 		DualGrad(x);
-		float theta = 1.0;
+		double theta = 1.0;
 		err = 0.0;
 		for (int j = 0; j < m; j++) {
-			lam[j] = std::max(0.f, lam[j] + theta * grad[j]);
+			lam[j] = std::max(0., lam[j] + theta * grad[j]);
 			err += grad[j] * grad[j];
 		}
 		err = std::sqrt(err);
 	}
 }
 
-float MMASolver::DualResidual(float* x, float epsi) {
+double MMASolver::DualResidual(double* x, double epsi) {
 
-	float* res = new float[2 * m];
+	double* res = new double[2 * m];
 
 	for (int j = 0; j < m; j++) {
 		res[j] = -b[j] - a[j] * z - y[j] + mu[j];
@@ -211,7 +211,7 @@ float MMASolver::DualResidual(float* x, float epsi) {
 		}
 	}
 
-	float nrI = 0.0;
+	double nrI = 0.0;
 	for (int i = 0; i < 2 * m; i++) {
 		if (nrI < std::abs(res[i])) {
 			nrI = std::abs(res[i]);
@@ -225,7 +225,7 @@ float MMASolver::DualResidual(float* x, float epsi) {
 
 void MMASolver::DualLineSearch() {
 
-	float theta = 1.005;
+	double theta = 1.005;
 	for (int i = 0; i < m; i++) {
 		if (theta < -1.01 * s[i] / lam[i]) {
 			theta = -1.01 * s[i] / lam[i];
@@ -242,23 +242,23 @@ void MMASolver::DualLineSearch() {
 	}
 }
 
-void MMASolver::DualHess(float* x) {
+void MMASolver::DualHess(double* x) {
 
-	float* df2 = new float[n];
-	float* PQ = new float[n * m];
+	double* df2 = new double[n];
+	double* PQ = new double[n * m];
 #ifdef MMA_WITH_OPENMP
 #pragma omp parallel for
 #endif
 	for (int i = 0; i < n; i++) {
-		float pjlam = p0[i];
-		float qjlam = q0[i];
+		double pjlam = p0[i];
+		double qjlam = q0[i];
 		for (int j = 0; j < m; j++) {
 			pjlam += pij[i * m + j] * lam[j];
 			qjlam += qij[i * m + j] * lam[j];
 			PQ[i * m + j] = pij[i * m + j] / pow(upp[i] - x[i], 2.0) - qij[i * m + j] / pow(x[i] - low[i], 2.0);
 		}
 		df2[i] = -1.0 / (2.0 * pjlam / pow(upp[i] - x[i], 3.0) + 2.0 * qjlam / pow(x[i] - low[i], 3.0));
-		float xp = (sqrt(pjlam) * low[i] + sqrt(qjlam) * upp[i]) / (sqrt(pjlam) + sqrt(qjlam));
+		double xp = (sqrt(pjlam) * low[i] + sqrt(qjlam) * upp[i]) / (sqrt(pjlam) + sqrt(qjlam));
 		if (xp < alpha[i]) {
 			df2[i] = 0.0;
 		}
@@ -268,7 +268,7 @@ void MMASolver::DualHess(float* x) {
 	}
 
 	// Create the matrix/matrix/matrix product: PQ^T * diag(df2) * PQ
-	float* tmp = new float[n * m];
+	double* tmp = new double[n * m];
 	std::fill(tmp, tmp + n * m, 0.f);
 #ifdef MMA_WITH_OPENMP
 #pragma omp parallel for
@@ -290,7 +290,7 @@ void MMASolver::DualHess(float* x) {
 		}
 	}
 
-	float lamai = 0.0;
+	double lamai = 0.0;
 	for (int j = 0; j < m; j++) {
 		if (lam[j] < 0.0) {
 			lam[j] = 0.0;
@@ -311,11 +311,11 @@ void MMASolver::DualHess(float* x) {
 	}
 
 	// pos def check
-	float HessTrace = 0.0;
+	double HessTrace = 0.0;
 	for (int i = 0; i < m; i++) {
 		HessTrace += hess[i * m + i];
 	}
-	float HessCorr = 1e-4 * HessTrace / m;
+	double HessCorr = 1e-4 * HessTrace / m;
 
 	if (-1.0 * HessCorr < 1.0e-7) {
 		HessCorr = -1.0e-7;
@@ -330,7 +330,7 @@ void MMASolver::DualHess(float* x) {
 	delete[] tmp;
 }
 
-void MMASolver::DualGrad(float* x) {
+void MMASolver::DualGrad(double* x) {
 	for (int j = 0; j < m; j++) {
 		grad[j] = -b[j] - a[j] * z - y[j];
 		for (int i = 0; i < n; i++) {
@@ -339,14 +339,14 @@ void MMASolver::DualGrad(float* x) {
 	}
 }
 
-void MMASolver::XYZofLAMBDA(float* x) {
+void MMASolver::XYZofLAMBDA(double* x) {
 
-	float lamai = 0.0;
+	double lamai = 0.0;
 	for (int i = 0; i < m; i++) {
 		if (lam[i] < 0.0) {
 			lam[i] = 0;
 		}
-		y[i] = std::max(0.f, lam[i] - c[i]); // Note y=(lam-c)/d - however d is fixed at one !!
+		y[i] = std::max(0., lam[i] - c[i]); // Note y=(lam-c)/d - however d is fixed at one !!
 		lamai += lam[i] * a[i];
 	}
 	z = std::max(0.0, 10.0 * (lamai - 1.0)); // SINCE a0 = 1.0
@@ -355,8 +355,8 @@ void MMASolver::XYZofLAMBDA(float* x) {
 #pragma omp parallel for
 #endif
 	for (int i = 0; i < n; i++) {
-		float pjlam = p0[i];
-		float qjlam = q0[i];
+		double pjlam = p0[i];
+		double qjlam = q0[i];
 		for (int j = 0; j < m; j++) {
 			pjlam += pij[i * m + j] * lam[j];
 			qjlam += qij[i * m + j] * lam[j];
@@ -371,8 +371,8 @@ void MMASolver::XYZofLAMBDA(float* x) {
 	}
 }
 
-void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, const float* dgdx, const float* xmin,
-	const float* xmax)
+void MMASolver::GenSub(const double* xval, const double* dfdx, const double* gx, const double* dgdx, const double* xmin,
+	const double* xmax)
 {
 	// Forward the iterator
 	iter++;
@@ -392,8 +392,8 @@ void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, co
 #pragma omp parallel for
 #endif
 		for (int i = 0; i < n; i++) {
-			float zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
-			float gamma;
+			double zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
+			double gamma;
 			if (zzz < 0.0) {
 				gamma = asymdec;
 			}
@@ -406,15 +406,15 @@ void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, co
 			low[i] = xval[i] - gamma * (xold1[i] - low[i]);
 			upp[i] = xval[i] + gamma * (upp[i] - xold1[i]);
 
-			float xmami = std::max(xmamieps, xmax[i] - xmin[i]);
-			// float xmami = xmax[i] - xmin[i];
+			double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
+			// double xmami = xmax[i] - xmin[i];
 			low[i] = std::max(low[i], xval[i] - 100.f * xmami);
 			low[i] = std::min(low[i], xval[i] - 1.0e-5f * xmami);
 			upp[i] = std::max(upp[i], xval[i] + 1.0e-5f * xmami);
 			upp[i] = std::min(upp[i], xval[i] + 100.f * xmami);
 
-			float xmi = xmin[i] - 1.0e-6;
-			float xma = xmax[i] + 1.0e-6;
+			double xmi = xmin[i] - 1.0e-6;
+			double xma = xmax[i] + 1.0e-6;
 			if (xval[i] < xmi) {
 				low[i] = xval[i] - (xma - xval[i]) / 0.9;
 				upp[i] = xval[i] + (xma - xval[i]) / 0.9;
@@ -427,7 +427,7 @@ void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, co
 	}
 
 	// Set bounds and the coefficients for the approximation
-	// float raa0 = 0.5*1e-6;
+	// double raa0 = 0.5*1e-6;
 #ifdef MMA_WITH_OPENMP
 #pragma omp parallel for
 #endif
@@ -442,20 +442,20 @@ void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, co
 
 		// Objective function
 		{
-			float dfdxp = std::max(0.f, dfdx[i]);
-			float dfdxm = std::max(0.f, -1.f * dfdx[i]);
-			float xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-			float pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
+			double dfdxp = std::max(0., dfdx[i]);
+			double dfdxm = std::max(0., -1. * dfdx[i]);
+			double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
+			double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
 			p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
 			q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
 		}
 
 		// Constraints
 		for (int j = 0; j < m; j++) {
-			float dgdxp = std::max(0.f, dgdx[i * m + j]);
-			float dgdxm = std::max(0.f, -1.f * dgdx[i * m + j]);
-			float xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-			float pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
+			double dgdxp = std::max(0., dgdx[i * m + j]);
+			double dgdxm = std::max(0., -1. * dgdx[i * m + j]);
+			double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
+			double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
 			pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
 			qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
 		}
@@ -470,7 +470,7 @@ void MMASolver::GenSub(const float* xval, const float* dfdx, const float* gx, co
 	}
 }
 
-void MMASolver::Factorize(float* K, int n) {
+void MMASolver::Factorize(double* K, int n) {
 
 	for (int s = 0; s < n - 1; s++) {
 		for (int i = s + 1; i < n; i++) {
@@ -482,10 +482,10 @@ void MMASolver::Factorize(float* K, int n) {
 	}
 }
 
-void MMASolver::Solve(float* K, float* x, int n) {
+void MMASolver::Solve(double* K, double* x, int n) {
 
 	for (int i = 1; i < n; i++) {
-		float a = 0.0;
+		double a = 0.0;
 		for (int j = 0; j < i; j++) {
 			a = a - K[i * n + j] * x[j];
 		}
@@ -494,7 +494,7 @@ void MMASolver::Solve(float* K, float* x, int n) {
 
 	x[n - 1] = x[n - 1] / K[(n - 1) * n + (n - 1)];
 	for (int i = n - 2; i >= 0; i--) {
-		float a = x[i];
+		double a = x[i];
 		for (int j = i + 1; j < n; j++) {
 			a = a - K[i * n + j] * x[j];
 		}

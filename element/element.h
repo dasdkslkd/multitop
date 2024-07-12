@@ -20,7 +20,7 @@ using namespace std;
 //		string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
 //		ifstream infile(fname, ios::in);
 //		assert(infile.is_open());
-//		auto data = vector<float>(9*576);
+//		auto data = vector<double>(9*576);
 //		string line;
 //		while (getline(infile, line))
 //		{
@@ -28,13 +28,13 @@ using namespace std;
 //			string cell;
 //			while (getline(ss, cell, ','))
 //			{
-//				float value;
+//				double value;
 //				stringstream(cell) >> value;
 //				data.push_back(value);
 //			}
 //		}
 //		infile.close();
-//		float* ptr = data.data();
+//		double* ptr = data.data();
 //		coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
 //	}
 //
@@ -45,13 +45,13 @@ using namespace std;
 //	const material_base& operator=(const material_base& instance) = delete;
 //};
 
-inline Eigen::MatrixXf coef;
+inline Eigen::MatrixXd coef;
 inline void readcoef()
 {
 	string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
 	ifstream infile(fname, ios::in);
 	assert(infile.is_open());
-	vector<float> data;
+	vector<double> data;
 	data.reserve(9 * 576);
 	string line;
 	while (getline(infile, line))
@@ -60,17 +60,17 @@ inline void readcoef()
 		string cell;
 		while (getline(ss, cell, ','))
 		{
-			float value;
+			double value;
 			stringstream(cell) >> value;
 			data.push_back(value);
 		}
 	}
 	infile.close();
-	float* ptr = data.data();
-	coef = Eigen::Map<Eigen::MatrixXf>(ptr, 576, 9);
+	double* ptr = data.data();
+	coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
 }
 
-void uploadcoef(float* ptr);
+void uploadcoef(double* ptr);
 
 class spinodal
 {
@@ -78,18 +78,19 @@ public:
 	bool use_cuda;
 	torch::jit::Module model;
 	int nel;
-	float* temp;
+	double* temp;
 	struct
 	{
-		float* temp;
+		double* temp;
 	}gbuf;
 
 
 	spinodal(int nel = 0, bool use_cuda = true) :nel(nel),use_cuda(use_cuda)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
-		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
-		temp = new float[9 * nel];
+		torch::set_default_dtype(caffe2::TypeMeta::Make<double>());
+		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\fNN_cpu_64.pt");
+		temp = new double[9 * nel];
 		fill(temp, temp + 9 * nel, 0.f);
 		if (use_cuda)
 			init_gpu();
@@ -106,7 +107,7 @@ public:
 		model = inst.model;
 		nel = inst.nel;
 		delete[] temp;
-		temp = new float[9 * inst.nel];
+		temp = new double[9 * inst.nel];
 		copy(inst.temp, inst.temp + 9 * inst.nel, temp);
 		if (use_cuda)
 			value_gpu(inst);
@@ -119,11 +120,11 @@ public:
 
 	void value_gpu(const spinodal& inst);
 
-	void predict(const float* x, float* S, float* dSdx);
+	void predict(const double* x, double* S, double* dSdx);
 
-	void elasticity(float* S, Eigen::VectorXd& sk);
+	void elasticity(double* S, Eigen::VectorXd& sk);
 
-	void sensitivity(float* dSdx, Eigen::VectorXd& dskdx, int &i);
+	void sensitivity(double* dSdx, Eigen::VectorXd& dskdx, int &i);
 
-	void filter(float* x);
+	void filter(double* x);
 };

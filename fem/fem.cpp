@@ -4,7 +4,7 @@
 
 extern float my_erfinvf(float a);
 
-Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj) :nelx(nelx), nely(nely), nelz(nelz), volfrac(volfrac), multiobj(multiobj)
+Femproblem::Femproblem(int nelx, int nely, int nelz, double volfrac, bool multiobj) :nelx(nelx), nely(nely), nelz(nelz), volfrac(volfrac), multiobj(multiobj)
 {
 	nel = nelx * nely * nelz;
 	elem = spinodal(nel);
@@ -35,16 +35,16 @@ Femproblem::Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiob
 	sk = Eigen::VectorXd::Constant(24 * 24 * nel, 0);
 	dskdx = Eigen::VectorXd::Constant(24 * 24 * nel, 0);
 
-	//K = Eigen::SparseMatrix<float>(ndof, ndof);
+	//K = Eigen::SparseMatrix<double>(ndof, ndof);
 	U = Eigen::VectorXd::Constant(ndof, 0);
 	F = Eigen::VectorXd(ndof);
 	//trip_list.resize(24 * 24 * nel);
 	trip_forsk.resize(24 * 24 * nel);
-	dKdx = Eigen::SparseMatrix<float>(ndof, ndof);
+	dKdx = Eigen::SparseMatrix<double>(ndof, ndof);
 	//K.reserve(Eigen::VectorXd::Constant(ndof, 192));
-	x = new float[nel * 4];
-	S = new float[nel * 9];
-	dSdx = new float[nel * 36];
+	x = new double[nel * 4];
+	S = new double[nel * 9];
+	dSdx = new double[nel * 36];
 	fill(x, x + 4 * nel, 0.5f);
 	fill(S, S + 9 * nel, 0.f);
 	fill(dSdx, dSdx + 36 * nel, 0.f);
@@ -116,7 +116,7 @@ void Femproblem::solvefem()
 #endif
 	for (int i = 0; i < freeidx.size(); ++i)
 	{
-		//trip_list.push_back(Eigen::Triplet<float>(ik(i), jk(i), sk(i)));
+		//trip_list.push_back(Eigen::Triplet<double>(ik(i), jk(i), sk(i)));
 		trip_list[i] = Eigen::Triplet<double>(ikfree(i), jkfree(i), sk(freeidx[i]));
 	}
 	K.setFromTriplets(trip_list.begin(), trip_list.end());
@@ -126,20 +126,20 @@ void Femproblem::solvefem()
 	cout << cg.iterations() << ' ' << cg.error() << endl;
 }
 
-void Femproblem::computefdf(float& f, float* dfdx)
+void Femproblem::computefdf(double& f, double* dfdx)
 {
 	f = U.transpose() * F;
-	float sum = 0;
+	double sum = 0;
 	for (int i = 0; i < 4 * nel; ++i)
 	{
 		elem.sensitivity(dSdx, dskdx, i);
 #pragma omp parallel for
 		for (int j = 0; j < 24 * 24 * nel; ++j)
 		{
-			trip_forsk[j] = Eigen::Triplet<float>(ik[j], jk[j], dskdx[j]);
+			trip_forsk[j] = Eigen::Triplet<double>(ik[j], jk[j], dskdx[j]);
 		}	
 		dKdx.setFromTriplets(trip_forsk.begin(), trip_forsk.end());
-		dfdx[i] = -U.cast<float>().transpose() * dKdx * U.cast<float>();
+		dfdx[i] = -U.cast<double>().transpose() * dKdx * U.cast<double>();
 
 		if (multiobj && i < nel && x[i] > 1e-3f)
 		{

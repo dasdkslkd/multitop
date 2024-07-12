@@ -16,7 +16,7 @@ public:
 	int nelx;
 	int nely;
 	int nelz;
-	float volfrac;
+	double volfrac;
 	bool multiobj;
 	int nel;
 	int ndof;
@@ -25,9 +25,9 @@ public:
 	//Eigen::VectorXi freedofs;
 	vector<int> freedofs;
 	vector<int> freeidx;
-	float* x;
-	float* S;
-	float* dSdx;
+	double* x;
+	double* S;
+	double* dSdx;
 	Eigen::VectorXi ik;
 	Eigen::VectorXi jk;
 	Eigen::VectorXi ikfree;
@@ -36,13 +36,13 @@ public:
 	Eigen::VectorXd dskdx;
 	Eigen::VectorXd U;
 	Eigen::SparseMatrix<double> K;
-	Eigen::SparseMatrix<float> dKdx;
+	Eigen::SparseMatrix<double> dKdx;
 	vector<Eigen::Triplet<double>> trip_list;
-	vector<Eigen::Triplet<float>> trip_forsk;
+	vector<Eigen::Triplet<double>> trip_forsk;
 	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
 	spinodal elem;
 
-	Femproblem(int nelx, int nely, int nelz, float volfrac, bool multiobj);
+	Femproblem(int nelx, int nely, int nelz, double volfrac, bool multiobj);
 
 	~Femproblem();
 
@@ -56,5 +56,5 @@ public:
 	void solvefem();
 
 	//计算目标函数及其导数
-	void computefdf(float& f, float* dfdx);
+	void computefdf(double& f, double* dfdx);
 };

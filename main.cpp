@@ -6,7 +6,7 @@ int main()
 	int nelx = 6;
 	int nely = 3;
 	int nelz = 3;
-	float volfrac = 0.4;
+	double volfrac = 0.4;
 	Femproblem fem(nelx, nely, nelz, volfrac, 1);
 	vector<int> cons(3 * (nely + 1) * (nelz + 1));
 	for (int i = 0; i < cons.size(); ++i)
@@ -19,6 +19,6 @@ int main()
 	}
 	fem.setforce(force);
 	mmacontext mma(fem);
-	//mma.solve();
+	mma.solve();
 	return 0;
 }

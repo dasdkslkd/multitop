@@ -3,9 +3,9 @@
 #include "device_launch_parameters.h"
 using namespace gv;
 
-__constant__ float* coef_g[576 * 9];
+__constant__ double* coef_g[576 * 9];
 
-void uploadcoef(float* ptr)
+void uploadcoef(double* ptr)
 {
 	cudaMemcpyToSymbol(coef_g, ptr, 576 * 9);
 	cuda_error_check;
@@ -13,8 +13,8 @@ void uploadcoef(float* ptr)
 
 void spinodal::init_gpu()
 {
-	cudaMalloc(&gbuf.temp, 9 * nel * sizeof(float));
-	cudaMemcpy(gbuf.temp, temp, 9 * nel * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&gbuf.temp, 9 * nel * sizeof(double));
+	cudaMemcpy(gbuf.temp, temp, 9 * nel * sizeof(double), cudaMemcpyHostToDevice);
 	uploadcoef(coef.data());
 	cuda_error_check;
 }
@@ -28,7 +28,7 @@ void spinodal::free_gpu()
 void spinodal::value_gpu(const spinodal& inst)
 {
 	cudaFree(gbuf.temp);
-	cudaMalloc(&gbuf.temp, 9 * inst.nel * sizeof(float));
-	cudaMemcpy(gbuf.temp, inst.gbuf.temp, 9 * inst.nel * sizeof(float), cudaMemcpyDeviceToDevice);
+	cudaMalloc(&gbuf.temp, 9 * inst.nel * sizeof(double));
+	cudaMemcpy(gbuf.temp, inst.gbuf.temp, 9 * inst.nel * sizeof(double), cudaMemcpyDeviceToDevice);
 	cuda_error_check;
 }
