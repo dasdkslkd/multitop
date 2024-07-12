@@ -70,24 +70,35 @@ inline void readcoef()
 	coef = Eigen::Map<Eigen::MatrixXf>(ptr, 576, 9);
 }
 
+void uploadcoef(float* ptr);
+
 class spinodal
 {
 public:
+	bool use_cuda;
 	torch::jit::Module model;
 	int nel;
 	float* temp;
+	struct
+	{
+		float* temp;
+	}gbuf;
 
 
-	spinodal(int nel = 0) :nel(nel)
+	spinodal(int nel = 0, bool use_cuda = true) :nel(nel),use_cuda(use_cuda)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\model-cpu.jit");
 		temp = new float[9 * nel];
 		fill(temp, temp + 9 * nel, 0.f);
+		if (use_cuda)
+			init_gpu();
 	}
 
 	~spinodal() { 
 		delete[] temp;
+		if (use_cuda)
+			free_gpu();
 	}
 
 	spinodal& operator=(const spinodal& inst)
@@ -97,8 +108,16 @@ public:
 		delete[] temp;
 		temp = new float[9 * inst.nel];
 		copy(inst.temp, inst.temp + 9 * inst.nel, temp);
+		if (use_cuda)
+			value_gpu(inst);
 		return *this;
 	}
+
+	void init_gpu();
+
+	void free_gpu();
+
+	void value_gpu(const spinodal& inst);
 
 	void predict(const float* x, float* S, float* dSdx);
 

@@ -19,6 +19,6 @@ int main()
 	}
 	fem.setforce(force);
 	mmacontext mma(fem);
-	mma.solve();
+	//mma.solve();
 	return 0;
 }
