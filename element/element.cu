@@ -16,6 +16,7 @@ void spinodal::init_gpu()
 	cudaMalloc(&gbuf.temp, 9 * nel * sizeof(double));
 	cudaMemcpy(gbuf.temp, temp, 9 * nel * sizeof(double), cudaMemcpyHostToDevice);
 	uploadcoef(coef.data());
+	//gbuf.temp.set_from_host(temp, 9, nel);
 	cuda_error_check;
 }
 
@@ -30,5 +31,7 @@ void spinodal::value_gpu(const spinodal& inst)
 	cudaFree(gbuf.temp);
 	cudaMalloc(&gbuf.temp, 9 * inst.nel * sizeof(double));
 	cudaMemcpy(gbuf.temp, inst.gbuf.temp, 9 * inst.nel * sizeof(double), cudaMemcpyDeviceToDevice);
+	//gbuf.temp.clear();
+	//gbuf.temp = inst.gbuf.temp;
 	cuda_error_check;
 }
