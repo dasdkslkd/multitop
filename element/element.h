@@ -4,7 +4,7 @@
 #include<Eigen/Core>
 #include<torch/script.h>
 #include "matrixIO.h"
-//#include "../culib/gpuVector.cuh"
+#include "../culib/gMat.cuh"
 #define PI acos(-1.f)
 using namespace std;
 
@@ -82,7 +82,8 @@ public:
 	double* temp;
 	struct
 	{
-		double* temp;
+		gpumat<double> temp;
+		//double* temp;
 	}gbuf;
 
 

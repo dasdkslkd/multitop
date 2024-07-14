@@ -82,18 +82,6 @@ __global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, i
 }
 
 //helper func
-void make_kernel_param(size_t* block_num, size_t* block_size, size_t num_tasks, size_t prefer_block_size = 512)
-{
-	*block_size = prefer_block_size;
-	*block_num = (num_tasks + prefer_block_size - 1) / prefer_block_size;
-}
-
-void make_kernel_param2d(dim3* grid, dim3* block, size_t nx, size_t ny, size_t pre_block = 32)
-{
-	*block = dim3(pre_block, pre_block, 0);
-	*grid = dim3(std::ceil(nx / pre_block), std::ceil(ny / pre_block), 0);
-}
-
 template<typename T>
 void init_array(T* dev_array, T value, int array_size)
 {
@@ -104,6 +92,18 @@ void init_array(T* dev_array, T value, int array_size)
 	cudaDeviceSynchronize();
 	cuda_error_check;
 }
+
+__host__ void make_kernel_param(size_t* block_num, size_t* block_size, size_t num_tasks, size_t prefer_block_size = 512);
+//{
+//	*block_size = prefer_block_size;
+//	*block_num = (num_tasks + prefer_block_size - 1) / prefer_block_size;
+//}
+
+__host__ void make_kernel_param2d(dim3* grid, dim3* block, size_t nx, size_t ny, size_t pre_block = 32);
+//{
+//	*block = dim3(pre_block, pre_block, 0);
+//	*grid = dim3(std::ceil(nx / pre_block), std::ceil(ny / pre_block), 0);
+//}
 
 template<typename Lambda, typename scalar>
 void apply_vector(gpumat<scalar>& v1, const gpumat<scalar>& v2, Lambda func)
@@ -135,6 +135,7 @@ private:
 public:
 	typedef scalar scalar;
 	
+	//return referrance to data ptr
 	scalar*& data() { return _data; }
 	const scalar* data() const { return _data; }
 	size_t size() const { return _size; }
@@ -163,19 +164,42 @@ public:
 		return _row == v2.rows() && _col == v2.cols();
 	}
 
+	void resize(size_t row, size_t col)
+	{
+		size_t newsize = row * col;
+		if (_size != newsize)
+		{
+			clear();
+			_size = newsize;
+			_row = row;
+			_col = col;
+			cudaMalloc(&_data, newsize * sizeof(scalar));
+		}
+		cuda_error_check;
+	}
+
 	void set_from_host(const scalar* host, const size_t row, const size_t col)
 	{
-		if (!isempty())
+		if (!isempty() && _size != row * col)
+		{
 			cudaFree(_data);
+			cudaMalloc(&_data, _size * sizeof(scalar));
+		}
+		else if (isempty())
+			cudaMalloc(&_data, row * col * sizeof(scalar));
 		_row = row;
 		_col = col;
 		_size = row * col;
-		cudaMalloc(&_data, _size * sizeof(scalar));
 		cudaMemcpy(_data, host, _size * sizeof(scalar), cudaMemcpyHostToDevice);
 		cuda_error_check;
 	}
 
 	void set_from_value(const scalar val) { init_array(data(), val, size()); }
+
+	void set_from_value(const scalar val, size_t row, size_t col)
+	{
+
+	}
 
 	//no mem check on host, be careful
 	void download(scalar* host) const
