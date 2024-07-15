@@ -4,6 +4,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <cmath>
+#include <iostream>
 
 #ifndef cuda_error_check
 #define cuda_error_check do{ \
@@ -70,7 +71,7 @@ __global__ void transpose_kernel(scalar* vin, scalar* vout, int m, int n)
 {
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
 	int row = blockIdx.y * blockDim.y + threadIdx.y;
-	if (col < n && row < m && col < row)
+	if (col < n && row < m && col <= row)
 	{
 		int xx = col * m + row;
 		int yy = row * n + col;
@@ -138,6 +139,25 @@ void apply_vector(gpumat<scalar>& v1, const gpumat<scalar>& v2, Lambda func)
 	cuda_error_check;
 }
 
+template<typename Lambda, typename scalar>
+void gen_vector(const gpumat<scalar>& v1, const gpumat<scalar>& v2, gpumat<scalar>& v3, Lambda func)
+{
+	const scalar* v1data = v1.data();
+	const scalar* v2data = v2.data();
+	scalar* v3data = v3.data();
+	auto merge = [=] __device__(int eid)
+	{
+		v3data[eid] = func(v1data[eid], v2data[eid]);
+	};
+	//make_kernel_param(&gridSize, &blockSize, v1.size(), 512);
+	dim3 block, grid;
+	block = dim3(512, 1, 1);
+	grid = dim3((v1.size() + 512 - 1) / 512, 1, 1);
+	map_kernel << <grid, block >> > (v3.size(), merge);
+	cudaDeviceSynchronize();
+	cuda_error_check;
+}
+
 //class
 
 template<typename scalar>
@@ -182,7 +202,7 @@ public:
 		return _row == v2.rows() && _col == v2.cols();
 	}
 
-	void resize(size_t row, size_t col)
+	gpumat& resize(size_t row, size_t col)
 	{
 		size_t newsize = row * col;
 		if (_size != newsize)
@@ -194,6 +214,14 @@ public:
 			cudaMalloc(&_data, newsize * sizeof(scalar));
 		}
 		cuda_error_check;
+		return *this;
+	}
+
+	gpumat& resize()
+	{
+		_row = _size;
+		_col = 1;
+		return *this;
 	}
 
 	void set_from_host(const scalar* host, const size_t row, const size_t col)
@@ -213,11 +241,6 @@ public:
 	}
 
 	void set_from_value(const scalar val) { init_array(data(), val, size()); }
-
-	void set_from_value(const scalar val, size_t row, size_t col)
-	{
-
-	}
 
 	//no mem check on host, be careful
 	void download(scalar* host) const
@@ -253,6 +276,12 @@ public:
 		cudaMalloc(&_data, sizeof(scalar) * _size);
 		cudaMemcpy(_data, v2.data(), sizeof(scalar) * _size, cudaMemcpyDeviceToDevice);
 		cuda_error_check;
+	}
+
+	gpumat(gpumat&& v2) noexcept :_data(v2._data), _size(v2.size()), _row(v2.rows()), _col(v2.cols())
+	{
+		v2._data = nullptr;
+		v2._size = v2._row = v2._col = 0;
 	}
 
 	//math func
@@ -410,6 +439,105 @@ public:
 		cuda_error_check;
 		return rst;
 	}
+
+	gpumat operator+(const gpumat& v2) const
+	{
+		if (!sizefit(v2))
+		{
+			printf("unmatched mat shape");
+			exit(100);
+		}
+		gpumat v3(_row, _col);
+		gen_vector(*this, v2, v3, [=]__device__(scalar e1, scalar e2) { return e1 + e2; });
+		return v3;
+	}
+
+	gpumat operator-(const gpumat& v2) const
+	{
+		if (!sizefit(v2))
+		{
+			printf("unmatched mat shape");
+			exit(100);
+		}
+		gpumat v3(_row, _col);
+		gen_vector(*this, v2, v3, [=]__device__(scalar e1, scalar e2) { return e1 - e2; });
+		return v3;
+	}
+
+	gpumat operator+(const scalar val) const
+	{
+		gpumat v3(_row, _col);
+		size_t grid, block;
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
+		map_kernel << <grid, block >> > (_data, v3.data(), size(), [=]__device__(scalar xx) { return xx + val; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v3;
+	}
+
+	gpumat operator-(const scalar val) const
+	{
+		gpumat v3(_row, _col);
+		size_t grid, block;
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
+		map_kernel << <grid, block >> > (_data, v3.data(), size(), [=]__device__(scalar xx) { return xx - val; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v3;
+	}
+
+	gpumat operator*(const scalar val) const
+	{
+		gpumat v3(_row, _col);
+		size_t grid, block;
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
+		map_kernel << <grid, block >> > (_data, v3.data(), size(), [=]__device__(scalar xx) { return xx * val; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v3;
+	}
+
+	gpumat operator/(const scalar val) const
+	{
+		gpumat v3(_row, _col);
+		size_t grid, block;
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
+		map_kernel << <grid, block >> > (_data, v3.data(), size(), [=]__device__(scalar xx) { return xx / val; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v3;
+	}
 };
+
+template<typename scalar>
+//use std::move(matprod(a,b)) to avoid deep copy
+gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
+{
+	if (v1.cols() != v2.rows())
+	{
+		printf("unmatched mat shape");
+		exit(101);
+	}
+	gpumat<scalar> rst(v1.rows(), v2.cols());
+	dim3 grid, block;
+	//make_kernel_param2d(&grid, &block, rst.cols(), rst.rows());
+	block = dim3(32, 32, 1);
+	grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
+	matprod_kernel << <grid, block >> > (v1.data(), v2.data(), rst.data(), v1.rows(), v1.cols(), rst.cols());
+	cudaDeviceSynchronize();
+	cuda_error_check;
+	return rst;
+}
+
+//template<typename scalar>
+
 
 #endif
