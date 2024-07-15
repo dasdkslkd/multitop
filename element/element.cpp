@@ -43,8 +43,10 @@ void spinodal::elasticity(double* S, Eigen::VectorXd& sk)
 void spinodal::sensitivity(double* dSdx, Eigen::VectorXd& dskdx, int& i)
 {
 	// 0<=i<4*nel
-	static int q = i / nel;
-	static int r = i - q * nel;
+	static int q;
+	static int r;
+	q = i / nel;
+	r = i - q * nel;
 	memcpy(temp + 9 * r, dSdx + 36 * r + 9 * q, 9 * sizeof(double));
 	auto ss = Eigen::Map<Eigen::MatrixXd>(temp, 9, nel);
 	dskdx.setZero();

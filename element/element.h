@@ -4,9 +4,10 @@
 #include<Eigen/Core>
 #include<torch/script.h>
 #include "matrixIO.h"
-#include "../culib/gMat.cuh"
 #define PI acos(-1.f)
 using namespace std;
+
+//template class gpumat<double>;
 
 //class material_base
 //{
@@ -71,7 +72,7 @@ inline void readcoef()
 	coef = Eigen::Map<Eigen::MatrixXd>(ptr, 576, 9);
 }
 
-void uploadcoef(double* ptr);
+//void uploadcoef(double* ptr);
 
 class spinodal
 {
@@ -80,12 +81,6 @@ public:
 	torch::jit::Module model;
 	int nel;
 	double* temp;
-	struct
-	{
-		gpumat<double> temp;
-		//double* temp;
-	}gbuf;
-
 
 	spinodal(int nel = 0, bool use_cuda = true) :nel(nel),use_cuda(use_cuda)
 	{
@@ -94,14 +89,10 @@ public:
 		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\fNN_cpu_64.pt");
 		temp = new double[9 * nel];
 		fill(temp, temp + 9 * nel, 0.f);
-		if (use_cuda)
-			init_gpu();
 	}
 
 	~spinodal() { 
 		delete[] temp;
-		if (use_cuda)
-			free_gpu();
 	}
 
 	spinodal& operator=(const spinodal& inst)
@@ -111,16 +102,8 @@ public:
 		delete[] temp;
 		temp = new double[9 * inst.nel];
 		copy(inst.temp, inst.temp + 9 * inst.nel, temp);
-		if (use_cuda)
-			value_gpu(inst);
 		return *this;
 	}
-
-	void init_gpu();
-
-	void free_gpu();
-
-	void value_gpu(const spinodal& inst);
 
 	void predict(const double* x, double* S, double* dSdx);
 

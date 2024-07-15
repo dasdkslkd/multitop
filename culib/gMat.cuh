@@ -51,7 +51,7 @@ __global__ void map_kernel(int n, Lam func)
 }
 
 template<typename scalar>
-__global__ void transpose_kernel(scalar* v, int m, int n)
+__global__ void transpose_inplace_kernel(scalar* v, int m, int n)
 {
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
 	int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -62,6 +62,20 @@ __global__ void transpose_kernel(scalar* v, int m, int n)
 		scalar temp = v[xx];
 		v[xx] = v[yy];
 		v[yy] = temp;
+	}
+}
+
+template<typename scalar>
+__global__ void transpose_kernel(scalar* vin, scalar* vout, int m, int n)
+{
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	if (col < n && row < m && col < row)
+	{
+		int xx = col * m + row;
+		int yy = row * n + col;
+		vout[xx] = vin[yy];
+		vout[yy] = vin[xx];
 	}
 }
 
@@ -87,19 +101,21 @@ void init_array(T* dev_array, T value, int array_size)
 {
 	size_t grid_dim;
 	size_t block_dim;
-	make_kernel_param(&grid_dim, &block_dim, array_size, 512);
+	//make_kernel_param(&grid_dim, &block_dim, array_size, 512);
+	block_dim = 512;
+	grid_dim = (array_size + 512 - 1) / 512;
 	init_array_kernel << <grid_dim, block_dim >> > (dev_array, value, array_size);
 	cudaDeviceSynchronize();
 	cuda_error_check;
 }
 
-__host__ void make_kernel_param(size_t* block_num, size_t* block_size, size_t num_tasks, size_t prefer_block_size = 512);
+//inline void make_kernel_param(size_t* block_num, size_t* block_size, size_t num_tasks, size_t prefer_block_size = 512)
 //{
 //	*block_size = prefer_block_size;
 //	*block_num = (num_tasks + prefer_block_size - 1) / prefer_block_size;
 //}
-
-__host__ void make_kernel_param2d(dim3* grid, dim3* block, size_t nx, size_t ny, size_t pre_block = 32);
+//
+//inline void make_kernel_param2d(dim3* grid, dim3* block, size_t nx, size_t ny, size_t pre_block = 32)
 //{
 //	*block = dim3(pre_block, pre_block, 0);
 //	*grid = dim3(std::ceil(nx / pre_block), std::ceil(ny / pre_block), 0);
@@ -113,9 +129,11 @@ void apply_vector(gpumat<scalar>& v1, const gpumat<scalar>& v2, Lambda func)
 	auto merge = [=] __device__(int eid) {
 		v1data[eid] = func(v1data[eid], v2data[eid]);
 	};
-	size_t gridSize, blockSize;
-	make_kernel_param(&gridSize, &blockSize, v1.size(), 512);
-	map_kernel << <gridSize, blockSize >> > (v1.size(), merge);
+	dim3 grid, block;
+	//make_kernel_param(&gridSize, &blockSize, v1.size(), 512);
+	block = dim3(512, 1, 1);
+	grid = dim3((v1.size() + 512 - 1) / 512, 1, 1);
+	map_kernel << <grid, block >> > (v1.size(), merge);
 	cudaDeviceSynchronize();
 	cuda_error_check;
 }
@@ -125,16 +143,16 @@ void apply_vector(gpumat<scalar>& v1, const gpumat<scalar>& v2, Lambda func)
 template<typename scalar>
 class gpumat
 {
-//data and shape
+	//data and shape
 private:
 	scalar* _data = nullptr;
 	size_t _size = 0;
 	size_t _row = 0;
 	size_t _col = 0;
-//helper func
+	//helper func
 public:
 	typedef scalar scalar;
-	
+
 	//return referrance to data ptr
 	scalar*& data() { return _data; }
 	const scalar* data() const { return _data; }
@@ -207,7 +225,7 @@ public:
 		cudaMemcpy(host, data(), _size * sizeof(scalar), cudaMemcpyDeviceToHost);
 		cuda_error_check;
 	}
-//constructor & deconstructor
+	//constructor & deconstructor
 public:
 	gpumat(void) :_size(0), _row(0), _col(0), _data(nullptr) {}
 
@@ -216,7 +234,7 @@ public:
 		_size = row * col;
 		_row = row;
 		_col = col;
-		cudaMalloc(&_data, _size * sizeof(Scalar));
+		cudaMalloc(&_data, _size * sizeof(scalar));
 		init_array(_data, default_value, _size);
 		cuda_error_check;
 	}
@@ -237,7 +255,7 @@ public:
 		cuda_error_check;
 	}
 
-//math func
+	//math func
 public:
 	const gpumat& operator=(const gpumat& v2)
 	{
@@ -303,7 +321,9 @@ public:
 	const gpumat& operator+=(const scalar val)
 	{
 		size_t grid, block;
-		make_kernel_param(&grid, &block, size(), 512);
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
 		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] + val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
@@ -313,7 +333,9 @@ public:
 	const gpumat& operator-=(const scalar val)
 	{
 		size_t grid, block;
-		make_kernel_param(&grid, &block, size(), 512);
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
 		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] - val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
@@ -323,7 +345,9 @@ public:
 	const gpumat& operator*=(const scalar val)
 	{
 		size_t grid, block;
-		make_kernel_param(&grid, &block, size(), 512);
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
 		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] * val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
@@ -333,19 +357,40 @@ public:
 	const gpumat& operator/=(const scalar val)
 	{
 		size_t grid, block;
-		make_kernel_param(&grid, &block, size(), 512);
+		//make_kernel_param(&grid, &block, size(), 512);
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
 		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] / val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return *this;
 	}
 
-	gpumat& transpose()
+	gpumat& transpose_inplace()
 	{
 		dim3 grid, block;
-		make_kernel_param2d(&grid, &block, _col, _row, 32);
-		transpose_kernel << <grid, block >> > (_data, _row, _col);
+		//make_kernel_param2d(&grid, &block, _col, _row, 32);
+		block = dim3(32, 32, 1);
+		grid = dim3(std::ceil(_col / 32.), std::ceil(_row / 32.), 1);
+		transpose_inplace_kernel << <grid, block >> > (_data, _row, _col);
+		cudaDeviceSynchronize();
+		size_t temp = _row;
+		_row = _col;
+		_col = temp;
+		cuda_error_check;
 		return *this;
+	}
+
+	gpumat transpose()
+	{
+		dim3 grid, block;
+		block = dim3(32, 32, 1);
+		grid = dim3(std::ceil(_col / 32.), std::ceil(_row / 32.), 1);
+		gpumat v3(_col, _row);
+		transpose_kernel << <grid, block >> > (_data, v3.data(), _row, _col);
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v3;
 	}
 
 	gpumat matprod(const gpumat& v2) const
@@ -355,9 +400,11 @@ public:
 			printf("unmatched mat shape");
 			exit(101);
 		}
-		gpumat rst(_row,v2.cols());
+		gpumat rst(_row, v2.cols());
 		dim3 grid, block;
-		make_kernel_param2d(&grid, &block, rst.cols(), rst.rows());
+		//make_kernel_param2d(&grid, &block, rst.cols(), rst.rows());
+		block = dim3(32, 32, 1);
+		grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
 		matprod_kernel << <grid, block >> > (data(), v2.data(), rst.data(), _row, _col, rst.cols());
 		cudaDeviceSynchronize();
 		cuda_error_check;
