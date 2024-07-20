@@ -1,30 +1,84 @@
 //#include "element.h"
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include "../culib/gMat.cuh"
+#include "element.cuh"
 //#include "../culib/cudaCommon.cuh"
 //#include "../culib/gpuVector.cuh"
 //using namespace gv;
 
-using gmatd = gpumat<double>;
+
 gpumat<double> coef_g(576, 9);
+double* x_host = nullptr;
 
-void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int n)
+
+void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& n, torch::jit::Module model)
 {
-
+	if (x_host)
+		x_host = (double*)malloc(4 * n * sizeof(double));
+	x.download(x_host);
+	for (int i = 0; i < n; ++i)
+	{
+		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + n] / 90),double(x_host[i + 2 * n] / 90),double(x_host[i + 3 * n] / 90) });
+		input.requires_grad_();
+		auto output = model({ input }).toTensor();
+		auto data = output.data_ptr<double>();
+		S.set_by_index(9 * i, 9, data, cudaMemcpyHostToDevice);
+		for (int j = 0; j < 9; ++j)
+		{
+			auto xx = input.clone();
+			xx.retain_grad();
+			auto y = model({ xx }).toTensor();
+			auto t = torch::zeros({ 9 });
+			t[j] = 1;
+			y.backward(t);
+			static double ttt;
+			ttt = xx.grad()[0].item().toDouble();
+			dSdx.set_by_index(36 * i + j, 1, &ttt, cudaMemcpyHostToDevice);
+			ttt = xx.grad()[1].item().toDouble();
+			dSdx.set_by_index(36 * i + j + 9, 1, &ttt, cudaMemcpyHostToDevice);
+			ttt = xx.grad()[2].item().toDouble();
+			dSdx.set_by_index(36 * i + j + 18, 1, &ttt, cudaMemcpyHostToDevice);
+			ttt = xx.grad()[3].item().toDouble();
+			dSdx.set_by_index(36 * i + j + 27, 1, &ttt, cudaMemcpyHostToDevice);
+		}
+	}
 }
 
-void elastisity(gmatd& S, gmatd& sk, int n)
+void elastisity(const gmatd& S, gmatd& sk, const int& n)
 {
-
+	sk = std::move(matprod(coef_g, S));
 }
 
-void sensitivity(gmatd& dSdx, gmatd& dsKdx, int& i, int n)
+void sensitivity(const gmatd& dSdx, gmatd& dsKdx, gmatd&temp, const int& i, const int& n)
 {
-
+	static int q;
+	static int r;
+	q = i / n;
+	r = i - q * n;
+	temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
+	dsKdx = std::move(matprod(coef_g, temp));
+	temp.set_from_value(0.);
 }
 
-void filter(gmatd& x)
+void filter(gmatd& v)
 {
-
+	
+	double* ptr = v.data();
+	size_t grid, block;
+	//make_kernel_param(&grid, &block, size(), 512);
+	block = 512;
+	grid = (v.size() + 512 - 1) / 512;
+	size_t r = v.rows();
+	auto merge = [=] __device__(int eid)
+	{
+		double rho_min = 0.3;
+		double theta_min = PI / 18;
+		double lam1 = 600.;
+		double lam2 = 60 * 180 / PI;
+		if (eid < r)
+			ptr[eid] /= (1 + std::exp(-lam1 * (ptr[eid] - rho_min)));
+		else 
+			ptr[eid] = std::max(ptr[eid], theta_min) / (1 + exp(-lam2 * (ptr[eid] - theta_min / 2)));
+	}; 
+	map_kernel << <grid, block >> > (v.size(), merge);
+	cudaDeviceSynchronize();
+	cuda_error_check;
 }

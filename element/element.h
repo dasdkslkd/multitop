@@ -1,10 +1,11 @@
-#pragma once
+#ifndef _ELEMENT_H_
+#define _ELEMENT_H_
 //#include<iostream>
 #include<fstream>
 #include<Eigen/Core>
 #include<torch/script.h>
 #include "matrixIO.h"
-#define PI acos(-1.f)
+#define PI acos(-1.)
 using namespace std;
 
 //template class gpumat<double>;
@@ -77,12 +78,11 @@ inline void readcoef()
 class spinodal
 {
 public:
-	bool use_cuda;
 	torch::jit::Module model;
 	int nel;
 	double* temp;
 
-	spinodal(int nel = 0, bool use_cuda = true) :nel(nel),use_cuda(use_cuda)
+	spinodal(int nel = 0) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
 		torch::set_default_dtype(caffe2::TypeMeta::Make<double>());
@@ -113,3 +113,4 @@ public:
 
 	void filter(double* x);
 };
+#endif

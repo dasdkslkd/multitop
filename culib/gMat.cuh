@@ -242,6 +242,13 @@ public:
 
 	void set_from_value(const scalar val) { init_array(data(), val, size()); }
 
+	//copy val to [first,first+len)
+	//kind only receive cudaMemcpyHostToDevice & cudaMemcpyDeviceToDevice as valid
+	void set_by_index(const size_t first, const size_t len, const  scalar* val, cudaMemcpyKind kind)
+	{
+		cudaMemcpy(_data + first, val, len * sizeof(scalar), kind);
+	}
+
 	//no mem check on host, be careful
 	void download(scalar* host) const
 	{
@@ -536,8 +543,5 @@ gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
 	cuda_error_check;
 	return rst;
 }
-
-//template<typename scalar>
-
 
 #endif

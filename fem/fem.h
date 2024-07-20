@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _FEM_H_
+#define _FEM_H_
 //#include<torch/script.h>
 #include<Eigen/Core>
 #include<Eigen/SparseCore>
@@ -58,3 +59,5 @@ public:
 	//计算目标函数及其导数
 	void computefdf(double& f, double* dfdx);
 };
+
+#endif

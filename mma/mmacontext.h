@@ -1,7 +1,13 @@
-#pragma once
+#ifndef _MMACONTEXT_H_
+#define _MMACONTEXT_H_
+
 //#include<iostream>
 #include "mmasolver.h"
 #include "fem.h"
+
+extern "C" void solve_g(
+	int m, int n, double* xval, double f, double* dfdx, double* g, double* dgdx, double* xmin, double* xmax,int nelx, int nely, int nelz, double volfrac, bool multiobj, vector<double> F, vector<int> freedofs, vector<int> freeidx, double* S, double* dSdx, vector<int> ik, vector<int> jk, vector<int> ikfree, vector<int> jkfree, vector<double> sk, vector<double>dskdx, vector<double> U,double* temp, torch::jit::Module model);
+
 class mmacontext
 {
 public:
@@ -116,4 +122,20 @@ public:
 				break;
 		}
 	}
+
+	void solve_gpu()
+	{
+		std::vector<double> F(&pfem->F(0, 0), pfem->F.data() + pfem->F.size());
+		std::vector<int> ik(&pfem->ik(0, 0), pfem->ik.data() + pfem->ik.size());
+		std::vector<int> jk(&pfem->jk(0, 0), pfem->jk.data() + pfem->jk.size());
+		std::vector<int> ikfree(&pfem->ikfree(0, 0), pfem->ikfree.data() + pfem->ikfree.size());
+		std::vector<int> jkfree(&pfem->jkfree(0, 0), pfem->jkfree.data() + pfem->jkfree.size());
+		std::vector<double> sk(&pfem->sk(0, 0), pfem->sk.data() + pfem->sk.size());
+		std::vector<double> dskdx(&pfem->dskdx(0, 0), pfem->dskdx.data() + pfem->dskdx.size());
+		std::vector<double> U(&pfem->U(0, 0), pfem->U.data() + pfem->U.size());
+
+		solve_g(m, n, xval, f, dfdx, g, dgdx, xmin, xmax, pfem->nelx, pfem->nely, pfem->nelz, pfem->volfrac, pfem->multiobj, F, pfem->freedofs, pfem->freeidx, pfem->S, pfem->dSdx, ik, jk, ikfree, jkfree, sk, dskdx, U, pfem->elem.temp, pfem->elem.model);
+	}
 };
+
+#endif

@@ -45,7 +45,7 @@ find_package(OpenMP REQUIRED)
 # # message(STATUS "${sourcefile}")	
 # file(GLOB_RECURSE headerfile *.h)
 file(GLOB sourcefile *.cpp mma/*.cpp fem/*.cpp element/*.cpp IO/*.cpp)
-file(GLOB cudafile culib/*.cu culib/*.cuh fem/*.cu element/*.cu)
+file(GLOB cudafile culib/*.cu culib/*.cuh fem/*.cu element/*.cu mma/*.cu)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/mma)

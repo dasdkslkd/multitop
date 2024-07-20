@@ -24,10 +24,10 @@ void spinodal::predict(const double* x, double* S, double* dSdx)
 			auto t = torch::zeros({ 9 });
 			t[j] = 1;
 			y.backward(t);
-			dSdx[36 * i + j] = xx.grad()[0].item().toFloat();
-			dSdx[36 * i + j + 9] = xx.grad()[1].item().toFloat();
-			dSdx[36 * i + j + 18] = xx.grad()[2].item().toFloat();
-			dSdx[36 * i + j + 27] = xx.grad()[3].item().toFloat();
+			dSdx[36 * i + j] = xx.grad()[0].item().toDouble();
+			dSdx[36 * i + j + 9] = xx.grad()[1].item().toDouble();
+			dSdx[36 * i + j + 18] = xx.grad()[2].item().toDouble();
+			dSdx[36 * i + j + 27] = xx.grad()[3].item().toDouble();
 		}
 	}
 }
@@ -52,19 +52,20 @@ void spinodal::sensitivity(double* dSdx, Eigen::VectorXd& dskdx, int& i)
 	dskdx.setZero();
 	for (int i = 0; i < 9; ++i)
 		dskdx += (coef.col(i) * ss.row(i)).cast<double>().reshaped();	
-	fill(temp + 9 * r, temp + 9 * (r + 1), 0.f);
+	fill(temp + 9 * r, temp + 9 * (r + 1), 0.);
 }
 
 void spinodal::filter(double* x)
 {
-	static double rho_min = 0.3f;
+	static double rho_min = 0.3;
 	static double theta_min = PI / 18;
-	static double lam1 = 600.f;
+	static double lam1 = 600.;
 	static double lam2 = 60 * 180 / PI;
 	for (int i = 0; i < nel; ++i)
 	{
 		x[i] /= (1 + exp(-lam1 * (x[i] - rho_min)));
 		x[i + nel] = max(x[i + nel], theta_min) / (1 + exp(-lam2 * (x[i + nel] - theta_min / 2)));
+		x[i + 2 * nel] = max(x[i + 2 * nel], theta_min) / (1 + exp(-lam2 * (x[i + 2 * nel] - theta_min / 2)));
+		x[i + 3 * nel] = max(x[i + 3 * nel], theta_min) / (1 + exp(-lam2 * (x[i + 3 * nel] - theta_min / 2)));
 	}
-
 }

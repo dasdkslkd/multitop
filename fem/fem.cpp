@@ -144,7 +144,7 @@ void Femproblem::computefdf(double& f, double* dfdx)
 		if (multiobj && i < nel && x[i] > 1e-3f)
 		{
 			sum += exp(-pow(my_erfinvf(2 * x[i] - 1), 2));
-			dfdx[i] += 400 / sqrtf(3.f * PI) / nel * my_erfinvf(2 * x[i] - 1);
+			dfdx[i] += 400 / sqrt(3. * PI) / nel * my_erfinvf(2 * x[i] - 1);
 		}
 	}
 	f -= 200 / sqrtf(3) / PI / nel * sum;
