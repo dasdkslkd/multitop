@@ -5,6 +5,7 @@
 #include "device_launch_parameters.h"
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #ifndef cuda_error_check
 #define cuda_error_check do{ \
@@ -20,46 +21,46 @@ class gpumat;
 
 //kernel func
 template<typename T>
-__global__ void init_array_kernel(T* array, T value, int array_size)
+__global__ void init_array_kernel(T* array, T value, int32_t array_size)
 {
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < array_size)
 		array[tid] = value;
 }
 
 template<typename T, typename Tout, typename Lam>
-__global__ void map_kernel(T* g_data, Tout* dst, int n, Lam func)
+__global__ void map_kernel(T* g_data, Tout* dst, int32_t n, Lam func)
 {
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < n)
 		dst[tid] = func(g_data[tid]);
 }
 
 template<typename T, typename Lam>
-__global__ void map_kernel(T* dst, int n, Lam func)
+__global__ void map_kernel(T* dst, int32_t n, Lam func)
 {
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < n)
 		dst[tid] = func(tid);
 }
 
 template<typename Lam>
-__global__ void map_kernel(int n, Lam func)
+__global__ void map_kernel(int32_t n, Lam func)
 {
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < n)
 		func(tid);
 }
 
 template<typename scalar>
-__global__ void transpose_inplace_kernel(scalar* v, int m, int n)
+__global__ void transpose_inplace_kernel(scalar* v, int32_t m, int32_t n)
 {
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int32_t col = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t row = blockIdx.y * blockDim.y + threadIdx.y;
 	if (col < n && row < m && col < row)
 	{
-		int xx = col * m + row;
-		int yy = row * n + col;
+		int32_t xx = col * m + row;
+		int32_t yy = row * n + col;
 		scalar temp = v[xx];
 		v[xx] = v[yy];
 		v[yy] = temp;
@@ -67,28 +68,28 @@ __global__ void transpose_inplace_kernel(scalar* v, int m, int n)
 }
 
 template<typename scalar>
-__global__ void transpose_kernel(scalar* vin, scalar* vout, int m, int n)
+__global__ void transpose_kernel(scalar* vin, scalar* vout, int32_t m, int32_t n)
 {
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int32_t col = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t row = blockIdx.y * blockDim.y + threadIdx.y;
 	if (col < n && row < m && col <= row)
 	{
-		int xx = col * m + row;
-		int yy = row * n + col;
+		int32_t xx = col * m + row;
+		int32_t yy = row * n + col;
 		vout[xx] = vin[yy];
 		vout[yy] = vin[xx];
 	}
 }
 
 template<typename scalar>
-__global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, int m, int n, int l)
+__global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, int32_t m, int32_t n, int32_t l)
 {
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int32_t col = blockIdx.x * blockDim.x + threadIdx.x;
+	int32_t row = blockIdx.y * blockDim.y + threadIdx.y;
 	if (col < l && row < m)
 	{
 		scalar sum = 0.;
-		for (int k = 0; k < n; ++k)
+		for (int32_t k = 0; k < n; ++k)
 		{
 			sum += v1[row * n + k] * v2[k * l + col];
 		}
@@ -96,9 +97,35 @@ __global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, i
 	}
 }
 
+template<typename scalar>
+__global__ void spmatprodcoo_kernel(scalar* rst, const scalar* v, const int32_t* rowid, const int32_t* colid, const scalar* val, int32_t rows, int32_t cols, int32_t nnz)
+{
+	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid < nnz)
+	{
+		atomicAdd(&rst[rowid[tid]], val[tid] * v[colid[tid]]);
+	}
+}
+
+template<typename scalar>
+__global__ void sum_partly_kernel(const scalar* v, size_t first, size_t len, scalar* sum)
+{
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid < len)
+		atomicAdd(sum, v[first + tid]);
+}
+
+template<typename scalar>
+__global__ void set_by_index_kernel(scalar* v, const int* idx, const scalar* val, int len)
+{
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid < len)
+		v[idx[tid]] = val[tid];
+}
+
 //helper func
 template<typename T>
-void init_array(T* dev_array, T value, int array_size)
+void init_array(T* dev_array, T value, int32_t array_size)
 {
 	size_t grid_dim;
 	size_t block_dim;
@@ -127,7 +154,7 @@ void apply_vector(gpumat<scalar>& v1, const gpumat<scalar>& v2, Lambda func)
 {
 	scalar* v1data = v1.data();
 	const scalar* v2data = v2.data();
-	auto merge = [=] __device__(int eid) {
+	auto merge = [=] __device__(int32_t eid) {
 		v1data[eid] = func(v1data[eid], v2data[eid]);
 	};
 	dim3 grid, block;
@@ -145,7 +172,7 @@ void gen_vector(const gpumat<scalar>& v1, const gpumat<scalar>& v2, gpumat<scala
 	const scalar* v1data = v1.data();
 	const scalar* v2data = v2.data();
 	scalar* v3data = v3.data();
-	auto merge = [=] __device__(int eid)
+	auto merge = [=] __device__(int32_t eid)
 	{
 		v3data[eid] = func(v1data[eid], v2data[eid]);
 	};
@@ -247,6 +274,19 @@ public:
 	void set_by_index(const size_t first, const size_t len, const  scalar* val, cudaMemcpyKind kind)
 	{
 		cudaMemcpy(_data + first, val, len * sizeof(scalar), kind);
+	}
+
+	//copy val to some position in gpumat by idx
+	//device to device only
+	void set_by_index(const int* idx, const size_t len, const scalar* val)
+	{
+		size_t grid, block;
+		block = 512;
+		grid = (len + 512 - 1) / 512;
+		set_by_index_kernel << <grid, block >> > (_data, idx, val, len);
+		//map_kernel << <grid, block >> > (len, [=]__device__(size_t eid) { _data[idx[eid]] = val[eid]; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
 	}
 
 	//no mem check on host, be careful
@@ -360,7 +400,7 @@ public:
 		//make_kernel_param(&grid, &block, size(), 512);
 		block = 512;
 		grid = (size() + 512 - 1) / 512;
-		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] + val; });
+		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int32_t tid) { return _data[tid] + val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return *this;
@@ -372,7 +412,7 @@ public:
 		//make_kernel_param(&grid, &block, size(), 512);
 		block = 512;
 		grid = (size() + 512 - 1) / 512;
-		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] - val; });
+		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int32_t tid) { return _data[tid] - val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return *this;
@@ -384,7 +424,7 @@ public:
 		//make_kernel_param(&grid, &block, size(), 512);
 		block = 512;
 		grid = (size() + 512 - 1) / 512;
-		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] * val; });
+		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int32_t tid) { return _data[tid] * val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return *this;
@@ -396,7 +436,7 @@ public:
 		//make_kernel_param(&grid, &block, size(), 512);
 		block = 512;
 		grid = (size() + 512 - 1) / 512;
-		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int tid) { return _data[tid] / val; });
+		map_kernel << <grid, block >> > (_data, size(), [=]__device__(int32_t tid) { return _data[tid] / val; });
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return *this;
@@ -522,6 +562,44 @@ public:
 		cuda_error_check;
 		return v3;
 	}
+
+	gpumat operator()(const std::vector<int32_t>& idx)
+	{
+		gpumat v2(idx.size(), 1);
+		size_t grid, block;
+		block = 512;
+		grid = (size() + 512 - 1) / 512;
+		map_kernel << <grid, block >> > (_data, v2.data(), idx.size(), [=]__device__(scalar xx) { return xx; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v2;
+	}
+
+	//get a value from _data[idx] for host
+	scalar get_item(const size_t idx)
+	{
+		scalar val = 0;
+		cudaMemcpy(&val, _data + idx, 1, cudaMemcpyDeviceToHost);
+		cuda_error_check;
+		return val;
+	}
+
+	scalar sum_partly(const size_t first, const size_t len)
+	{
+		scalar sum = 0;
+		scalar* sum_g;
+		cudaMalloc(&sum_g, sizeof(scalar));
+		cudaMemcpy(sum_g, &sum, sizeof(scalar), cudaMemcpyHostToDevice);
+
+		size_t grid, block;
+		block = 512;
+		grid = (len + 512 - 1) / 512;
+		sum_partly_kernel << <grid, block >> > (data(), first, len, sum_g);
+		cudaDeviceSynchronize();
+		cudaMemcpy(&sum, sum_g, sizeof(scalar), cudaMemcpyDeviceToHost);
+		cuda_error_check;
+		return sum;
+	}
 };
 
 template<typename scalar>
@@ -539,6 +617,26 @@ gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
 	block = dim3(32, 32, 1);
 	grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
 	matprod_kernel << <grid, block >> > (v1.data(), v2.data(), rst.data(), v1.rows(), v1.cols(), rst.cols());
+	cudaDeviceSynchronize();
+	cuda_error_check;
+	return rst;
+}
+
+//coo-type sparse matrix A*v
+//non unique rowid in a col supported
+template<typename scalar>
+gpumat<scalar> spmatprodcoo(const gpumat<scalar>& v, const gpumat<int32_t>& rowid, const gpumat<int32_t>& colid, const gpumat<scalar>& val, const int32_t rows, const int32_t cols, const int32_t nnz)
+{
+	if (cols != v.rows())
+	{
+		printf("unmatched mat shape");
+		exit(301);
+	}
+	gpumat<scalar> rst(rows, 1);
+	uint32_t grid, block;
+	block = 512;
+	grid = (nnz + 511) / 512;
+	spmatprodcoo_kernel << <grid, block >> > (rst.data(), v.data(), rowid.data(), colid.data(), val.data(), rows, cols, nnz);
 	cudaDeviceSynchronize();
 	cuda_error_check;
 	return rst;

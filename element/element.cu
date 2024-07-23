@@ -5,18 +5,18 @@
 //using namespace gv;
 
 
-gpumat<double> coef_g(576, 9);
+//gpumat<double> coef_g(576, 9);
 double* x_host = nullptr;
 
 
-void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& n, torch::jit::Module model)
+void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module model)
 {
-	if (x_host)
-		x_host = (double*)malloc(4 * n * sizeof(double));
+	if (!x_host)
+		x_host = (double*)malloc(4 * nel * sizeof(double));
 	x.download(x_host);
-	for (int i = 0; i < n; ++i)
+	for (int i = 0; i < nel; ++i)
 	{
-		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + n] / 90),double(x_host[i + 2 * n] / 90),double(x_host[i + 3 * n] / 90) });
+		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + nel] / 90),double(x_host[i + 2 * nel] / 90),double(x_host[i + 3 * nel] / 90) });
 		input.requires_grad_();
 		auto output = model({ input }).toTensor();
 		auto data = output.data_ptr<double>();
@@ -42,19 +42,19 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& n, torch::jit::Module m
 	}
 }
 
-void elastisity(const gmatd& S, gmatd& sk, const int& n)
+void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)
 {
-	sk = std::move(matprod(coef_g, S));
+	sk = std::move(matprod(coef, S));
 }
 
-void sensitivity(const gmatd& dSdx, gmatd& dsKdx, gmatd&temp, const int& i, const int& n)
+void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp, const int& i, const int& nel)
 {
 	static int q;
 	static int r;
-	q = i / n;
-	r = i - q * n;
+	q = i / nel;
+	r = i - q * nel;
 	temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
-	dsKdx = std::move(matprod(coef_g, temp));
+	dsKdx = std::move(matprod(coef, temp));
 	temp.set_from_value(0.);
 }
 

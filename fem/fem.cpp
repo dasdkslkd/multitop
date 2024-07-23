@@ -147,5 +147,5 @@ void Femproblem::computefdf(double& f, double* dfdx)
 			dfdx[i] += 400 / sqrt(3. * PI) / nel * my_erfinvf(2 * x[i] - 1);
 		}
 	}
-	f -= 200 / sqrtf(3) / PI / nel * sum;
+	f -= 200 / sqrt(3) / PI / nel * sum;
 }
