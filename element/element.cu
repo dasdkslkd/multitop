@@ -1,5 +1,6 @@
 //#include "element.h"
 #include "element.cuh"
+#include "../IO/matrixIO.h"
 //#include "../culib/cudaCommon.cuh"
 //#include "../culib/gpuVector.cuh"
 //using namespace gv;
@@ -16,9 +17,11 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 	x.download(x_host);
 	for (int i = 0; i < nel; ++i)
 	{
-		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + nel] / 90),double(x_host[i + 2 * nel] / 90),double(x_host[i + 3 * nel] / 90) });
+		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + nel] * 2 / PI),double(x_host[i + 2 * nel] * 2 / PI),double(x_host[i + 3 * nel] * 2 / PI) });
 		input.requires_grad_();
 		auto output = model({ input }).toTensor();
+		//std::cout << input << '\n';
+		//std::cout << output << '\n';
 		auto data = output.data_ptr<double>();
 		S.set_by_index(9 * i, 9, data, cudaMemcpyHostToDevice);
 		for (int j = 0; j < 9; ++j)
@@ -44,7 +47,18 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)
 {
-	sk = std::move(matprod(coef, S));
+	//double* S_h = new double[S.size()];
+	//S.download(S_h);
+	//double* coef_test = new double[576 * 9];
+	//double* sktest = new double[sk.size()];
+	//coef.download(coef_test);
+	//sk.download(sktest);
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\S.csv", S_h, S.size());
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coeftest.csv", coef_test, 576 * 9);
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-pre.csv", sktest, sk.size());
+	sk = matprod(coef, S);
+	//sk.download(sktest);
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-post.csv", sktest, sk.size());
 }
 
 void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp, const int& i, const int& nel)

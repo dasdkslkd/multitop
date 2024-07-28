@@ -15,6 +15,30 @@ void savemat(string fileName, T matrix)
 	}
 }
 
+template<class T>
+void savevec(string fileName, vector<T> matrix)
+{
+	ofstream file(fileName);
+	if (file.is_open())
+	{
+		for (auto i : matrix)
+			file << i << ',' << endl;
+		file.close();
+	}
+}
+
+template<class T>
+void savearr(string filename, T* arr, size_t len)
+{
+	ofstream file(filename);
+	if (file.is_open())
+	{
+		for (int i = 0; i < len; ++i)
+			file << arr[i] << ',' << endl;
+		file.close();
+	}
+}
+
 inline Eigen::MatrixXd readmat(string filename)
 {
 

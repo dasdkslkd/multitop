@@ -123,6 +123,7 @@ void Femproblem::solvefem()
 	//savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\ffree.csv", F(freedofs));
 	cg.compute(K);
 	U(freedofs) = cg.solve(F(freedofs));
+	cout << U << endl;
 	cout << cg.iterations() << ' ' << cg.error() << endl;
 }
 

@@ -1,4 +1,5 @@
 #include "fem.cuh"
+#include"../IO/matrixIO.h"
 gpumat<double> F;
 extern float my_erfinvf(float a);
 
@@ -21,6 +22,7 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	K.setFromTriplets(triplist.begin(), triplist.end());
 	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
 	cg.compute(K);
+	//savevec("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-g.csv", sk);
 	Eigen::VectorXd utemp;
 	utemp = cg.solve(F(freedofs));
 	static gpumat<double> uuu;
@@ -40,6 +42,11 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& temp, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host)
 {
 	static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
+	//double* U_h = new double[U.size()];
+	//U.download(U_h);
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\Uh.csv", U_h, U.size());
+	//savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\Fh.csv", F_host);
+	//printgmat(matprod(U.transpose(), F));
 	f = matprod(U.transpose(), F).get_item(0);
 	double sum = 0;
 	int nel = static_cast<int>(dfdx.size() / 4);
@@ -60,7 +67,7 @@ void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, 
 void computegdg(gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, const double& volfrac, const int m, const int nel)
 {
 	static double theta_min = PI / 18;
-	double ttt = x.sum_partly(0, nel);
+	double ttt = x.sum_partly(0, nel) / nel / volfrac - 1;
 	g.set_by_index(m - 1, 1, &ttt, cudaMemcpyHostToDevice);
 	for (int i = 0; i < nel; ++i)
 	{

@@ -105,6 +105,7 @@ public:
 		while (logger.change > 0.01f && solver.iter < logger.maxiter && solver.iter < logger.miniter + 50)
 		{
 			pfem->elem.predict(xval, pfem->S, pfem->dSdx);
+			//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\S.csv", pfem->S, 9 * pfem->nel);
 			pfem->elem.elasticity(pfem->S, pfem->sk);
 			pfem->solvefem();
 			pfem->computefdf(f, dfdx);
@@ -120,7 +121,7 @@ public:
 			for (int i = 0; i < n; ++i)
 				logger.change = max(logger.change, fabs(xval[i] - solver.xold1[i]));
 			printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", solver.iter, f, (g[m - 1] + 1) * pfem->volfrac, logger.change);
-			logger.flist[solver.iter] = f;
+			//logger.flist[solver.iter] = f;
 			//if (solver.iter == 1)
 			//	break;
 		}

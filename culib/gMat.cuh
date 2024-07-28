@@ -82,18 +82,18 @@ __global__ void transpose_kernel(scalar* vin, scalar* vout, int32_t m, int32_t n
 }
 
 template<typename scalar>
-__global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, int32_t m, int32_t n, int32_t l)
+__global__ void matprod_kernel(const scalar* v1, const scalar* v2, scalar* v3, int m, int n, int l)
 {
-	int32_t col = blockIdx.x * blockDim.x + threadIdx.x;
-	int32_t row = blockIdx.y * blockDim.y + threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
 	if (col < l && row < m)
 	{
 		scalar sum = 0.;
-		for (int32_t k = 0; k < n; ++k)
+		for (int k = 0; k < n; ++k)
 		{
-			sum += v1[row * n + k] * v2[k * l + col];
+			sum += v1[k * m + row] * v2[col * n + k];
 		}
-		v3[row * l + col] = sum;
+		v3[col * m + row] = sum;
 	}
 }
 
@@ -579,7 +579,7 @@ public:
 	scalar get_item(const size_t idx)
 	{
 		scalar val = 0;
-		cudaMemcpy(&val, _data + idx, 1, cudaMemcpyDeviceToHost);
+		cudaMemcpy(&val, _data + idx, sizeof(scalar), cudaMemcpyDeviceToHost);
 		cuda_error_check;
 		return val;
 	}

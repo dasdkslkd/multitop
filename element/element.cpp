@@ -35,7 +35,10 @@ void spinodal::predict(const double* x, double* S, double* dSdx)
 void spinodal::elasticity(double* S, Eigen::VectorXd& sk)
 {
 	auto ss = Eigen::Map<Eigen::MatrixXd>(S, 9, nel);
+	//savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\ss.csv", ss);
 	sk.setZero();
+	//sk = (coef * ss).reshaped();
+	//savemat("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-test.csv", sk);
 	for (int i = 0; i < 9; ++i)
 		sk += (coef.col(i) * ss.row(i)).cast<double>().reshaped();
 }
