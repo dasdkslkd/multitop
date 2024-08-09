@@ -67,7 +67,6 @@ void solve_g(
 	{
 		double change = 0.;
 		++iter;
-		x.set_from_host(x_h, n, 1);
 		predict(x, S, dSdx, nel, model);
 		//S.download(S_h);
 		//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\S.csv", S_h, 9 * nel);
@@ -79,7 +78,6 @@ void solve_g(
 		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h, U);
 		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, temp, coef, ndof, multiobj, F_h);
 		dfdx.download(dfdx_h);
-		dfdx.download(dfdx_h);
 		computegdg(x, g, dgdx, volfrac, m, nel);
 		g.download(g_h);
 		dgdx.download(dgdx_h);
@@ -89,11 +87,13 @@ void solve_g(
 			miniter = iter;
 			minf = f;
 		}
-		mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.5);
+		mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.1);
+		x.set_from_host(x_h, n, 1);
+		filter(x);
 		for (int i = 0; i < n; ++i)
 			change = std::max(change, std::abs(x_h[i] - xold1[i]));
 		printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", iter, f, (g_h[m - 1] + 1) * volfrac, change);
-		if (iter == 2)
+		if (iter == 1)
 			break;
 	}
 	delete xold1, xold2, low, upp, a, c, d;

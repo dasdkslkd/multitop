@@ -19,7 +19,7 @@ int main()
 	}
 	fem.setforce(force);
 	mmacontext mma(fem);
-	mma.solve_gpu();
-	//mma.solve();
+	//mma.solve_gpu();
+	mma.solve();
 	return 0;
 }

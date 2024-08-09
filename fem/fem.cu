@@ -53,7 +53,7 @@ void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, 
 	for (int i = 0; i < 4 * nel; ++i)
 	{
 		sensitivity(dSdx, coef, dskdx, temp, i, nel);
-		dfdx.set_by_index(i, 1, matprod(U.transpose(), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs, ik.size())).data(), cudaMemcpyDeviceToDevice);
+		dfdx.set_by_index(i, 1, matprod(U.transpose()*(-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs, ik.size())).data(), cudaMemcpyDeviceToDevice);
 		if (multiobj && i < nel && x.get_item(i)>1e-3)
 		{
 			sum += std::exp(-std::pow(my_erfinvf(2 * x.get_item(i) - 1), 2));
@@ -69,15 +69,15 @@ void computegdg(gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, cons
 	static double theta_min = PI / 18;
 	double ttt = x.sum_partly(0, nel) / nel / volfrac - 1;
 	g.set_by_index(m - 1, 1, &ttt, cudaMemcpyHostToDevice);
-	//for (int i = 0; i < nel; ++i)
-	//{
-	//	ttt = theta_min - x.get_item(i + nel) - x.get_item(i + 2 * nel) - x.get_item(i + 3 * nel);
-		//g.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
-		//ttt = -1;
-		//dgdx.set_by_index(m * (i + nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
-		//dgdx.set_by_index(m * (i + 2 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
-		//dgdx.set_by_index(m * (i + 3 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
-	//}
+	for (int i = 0; i < nel; ++i)
+	{
+		ttt = theta_min - x.get_item(i + nel) - x.get_item(i + 2 * nel) - x.get_item(i + 3 * nel);
+		g.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
+		ttt = -1;
+		dgdx.set_by_index(m * (i + nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+		dgdx.set_by_index(m * (i + 2 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+		dgdx.set_by_index(m * (i + 3 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+	}
 	static bool dummy = false;
 	if (!dummy)
 	{

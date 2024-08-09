@@ -4,6 +4,7 @@
 //#include<iostream>
 #include "mmasolver.h"
 #include "fem.h"
+#include "matrixIO.h"
 
 extern "C"
 void solve_g(
@@ -48,7 +49,7 @@ public:
 		logger.minf = 1e+9;
 		logger.flist = new double[logger.maxiter];
 		pfem = &fem;
-		m = 1 /*+ pfem->nel*/;
+		m = 1 + pfem->nel;
 		n = 4 * pfem->nel;
 		solver = MMASolver(n, m);
 		xval = pfem->x;
@@ -123,9 +124,12 @@ public:
 				logger.change = max(logger.change, fabs(xval[i] - solver.xold1[i]));
 			printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", solver.iter, f, (g[m - 1] + 1) * pfem->volfrac, logger.change);
 			//logger.flist[solver.iter] = f;
-			//if (solver.iter == 1)
-			//	break;
+			if (solver.iter == 1)
+				break;
 		}
+		string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+		savearr(outpath + "xc.txt", xval, n);
+		savearr(outpath + "objc.txt", logger.flist,logger.maxiter);
 	}
 
 	void solve_gpu()
