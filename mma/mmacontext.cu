@@ -97,4 +97,7 @@ void solve_g(
 			break;
 	}
 	delete xold1, xold2, low, upp, a, c, d;
+	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+	savearr(outpath + "x.txt", x_h, n);
+	savevec(outpath + "obj.txt", flist);
 }

@@ -48,7 +48,7 @@ public:
 		logger.minf = 1e+9;
 		logger.flist = new double[logger.maxiter];
 		pfem = &fem;
-		m = 1 + pfem->nel;
+		m = 1 /*+ pfem->nel*/;
 		n = 4 * pfem->nel;
 		solver = MMASolver(n, m);
 		xval = pfem->x;
@@ -80,17 +80,17 @@ public:
 	{
 		static double theta_min = PI / 18;
 		g[m - 1] = accumulate(xval, xval + pfem->nel, 0.f) / pfem->nel / pfem->volfrac - 1;
-		for (int i = 0; i < pfem->nel; ++i)
-		{
-			g[i] = theta_min - xval[i + pfem->nel] - xval[i + 2 * pfem->nel] - xval[i + 3 * pfem->nel];
-			//g[i + pfem->nel] = 1e-3f - xval[i + pfem->nel] * xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
-			dgdx[m * (i + pfem->nel) + i] = -1;
-			dgdx[m * (i + 2 * pfem->nel) + i] = -1;
-			dgdx[m * (i + 3 * pfem->nel) + i] = -1;
-			//dgdx[m * (i + pfem->nel) + i + pfem->nel] = -xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
-			//dgdx[m * (i + 2 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 3 * pfem->nel];
-			//dgdx[m * (i + 3 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 2 * pfem->nel];
-		}
+		//for (int i = 0; i < pfem->nel; ++i)
+		//{
+		//	g[i] = theta_min - xval[i + pfem->nel] - xval[i + 2 * pfem->nel] - xval[i + 3 * pfem->nel];
+		//	//g[i + pfem->nel] = 1e-3f - xval[i + pfem->nel] * xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
+		//	dgdx[m * (i + pfem->nel) + i] = -1;
+		//	dgdx[m * (i + 2 * pfem->nel) + i] = -1;
+		//	dgdx[m * (i + 3 * pfem->nel) + i] = -1;
+		//	//dgdx[m * (i + pfem->nel) + i + pfem->nel] = -xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
+		//	//dgdx[m * (i + 2 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 3 * pfem->nel];
+		//	//dgdx[m * (i + 3 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 2 * pfem->nel];
+		//}
 		for (int i = 0; i < n; ++i)
 		{
 			if (i < pfem->nel)
@@ -117,6 +117,7 @@ public:
 				logger.minf = f;
 			}
 			solver.Update(xval, dfdx, g, dgdx, xmin, xmax);
+			pfem->elem.filter(xval);
 			logger.change = 0;
 			for (int i = 0; i < n; ++i)
 				logger.change = max(logger.change, fabs(xval[i] - solver.xold1[i]));

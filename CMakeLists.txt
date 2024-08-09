@@ -54,6 +54,7 @@ include_directories(${CMAKE_SOURCE_DIR}/element)
 include_directories(${CMAKE_SOURCE_DIR}/IO)
 include_directories(${CMAKE_SOURCE_DIR}/culib)
 include_directories(${CMAKE_SOURCE_DIR}/mma-g)
+#include_directories(${CMAKE_SOURCE_DIR}/logger)
 
 add_library(culib STATIC ${cudafile})
 set_target_properties(culib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
