@@ -4,6 +4,14 @@
 #include "../mma-g/mmaOpt.h"
 #include "../IO/matrixIO.h"
 
+template<typename T>
+void savegmat(gpumat<T>& v, string filename)
+{
+	T* host = new T[v.size()];
+	v.download(host);
+	savearr(filename, host, v.size());
+}
+
 extern "C"
 void solve_g(
 	//mma
@@ -13,7 +21,8 @@ void solve_g(
 	//elem
 	double* temp_h, Eigen::MatrixXd& coef_h, torch::jit::Module model)
 {
-	printf("1");
+	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+	//printf("1");
 	double change = 1.;
 	int iter = 0;
 	double minf = 1e9;
@@ -45,7 +54,7 @@ void solve_g(
 	x.set_from_host(x_h, n, 1);
 	dfdx.set_from_host(dfdx_h, n, 1);
 	g.set_from_host(g_h, m, 1);
-	dgdx.set_from_host(dgdx_h, m * n, 1);
+	dgdx.set_from_host(dgdx_h, m, n);
 	//xmin.set_from_host(xmin_h, n, 1);
 	//xmax.set_from_host(xmax_h, n, 1);
 	F.set_from_host(F_h.data(), F_h.size(), 1);
@@ -78,26 +87,37 @@ void solve_g(
 		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h, U);
 		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, temp, coef, ndof, multiobj, F_h);
 		dfdx.download(dfdx_h);
+		//savegmat(dfdx, outpath + "dfdxo.txt");
 		computegdg(x, g, dgdx, volfrac, m, nel);
 		g.download(g_h);
-		dgdx.download(dgdx_h);
-		flist[iter] = f;
+		//dgdx.download(dgdx_h);
+		//auto dgdxt = dgdx.transpose();
+		//savegmat(dgdxt, outpath + "dgdxt.txt");
+		dgdx.transpose().download(dgdx_h);
+		flist[iter - 1] = f;
 		if (f < minf)
 		{
 			miniter = iter;
 			minf = f;
 		}
 		mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.1);
+		//savegmat(U, outpath + "Ug.txt");
+		//savearr(outpath + "dfdxg.txt", dfdx_h, n);
+		//savearr(outpath + "gg.txt", g_h, m);
+		//savearr(outpath + "dgdxg.txt", dgdx_h, m * n);
+		//savegmat(dgdx, outpath + "dgdxg.txt");
+		//cout << dgdx.rows() << ' ' << dgdx.cols() << endl;
+		//savegmat(dgdx.transpose(), outpath + "dgdxt.txt");
+
+		filter(x_h, nel);
 		x.set_from_host(x_h, n, 1);
-		filter(x);
 		for (int i = 0; i < n; ++i)
 			change = std::max(change, std::abs(x_h[i] - xold1[i]));
 		printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", iter, f, (g_h[m - 1] + 1) * volfrac, change);
-		if (iter == 1)
-			break;
+		//if (iter == 1)
+		//	break;
 	}
 	delete xold1, xold2, low, upp, a, c, d;
-	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
 	savearr(outpath + "x.txt", x_h, n);
 	savevec(outpath + "obj.txt", flist);
 }

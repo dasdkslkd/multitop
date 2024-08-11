@@ -38,7 +38,7 @@ MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
 	//, epsimin(1e-7)
 	, epsimin(std::sqrt(n + m) * 1e-9)
 	, raa0(0.00001)
-	, move(0.5)
+	, move(0.1)
 	, albefa(0.1)
 	, asyminit(0.5) // 0.2;
 	, asymdec(0.7) // 0.65;

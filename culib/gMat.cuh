@@ -68,15 +68,15 @@ __global__ void transpose_inplace_kernel(scalar* v, int32_t m, int32_t n)
 }
 
 template<typename scalar>
-__global__ void transpose_kernel(scalar* vin, scalar* vout, int32_t m, int32_t n)
+__global__ void transpose_kernel(scalar* vin, scalar* vout, int m, int n)
 {
-	int32_t col = blockIdx.x * blockDim.x + threadIdx.x;
-	int32_t row = blockIdx.y * blockDim.y + threadIdx.y;
-	if (col < n && row < m && col <= row)
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	if (col < n && row < m)
 	{
-		int32_t xx = col * m + row;
-		int32_t yy = row * n + col;
-		vout[xx] = vin[yy];
+		int xx = col * m + row;
+		int yy = row * n + col;
+		//vout[xx] = vin[yy];
 		vout[yy] = vin[xx];
 	}
 }

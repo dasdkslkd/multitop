@@ -16,4 +16,6 @@ void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp
 
 void filter(gmatd& v);
 
+void filter(double* x, int nel);
+
 #endif

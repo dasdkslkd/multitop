@@ -81,17 +81,17 @@ public:
 	{
 		static double theta_min = PI / 18;
 		g[m - 1] = accumulate(xval, xval + pfem->nel, 0.f) / pfem->nel / pfem->volfrac - 1;
-		//for (int i = 0; i < pfem->nel; ++i)
-		//{
-		//	g[i] = theta_min - xval[i + pfem->nel] - xval[i + 2 * pfem->nel] - xval[i + 3 * pfem->nel];
-		//	//g[i + pfem->nel] = 1e-3f - xval[i + pfem->nel] * xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
-		//	dgdx[m * (i + pfem->nel) + i] = -1;
-		//	dgdx[m * (i + 2 * pfem->nel) + i] = -1;
-		//	dgdx[m * (i + 3 * pfem->nel) + i] = -1;
-		//	//dgdx[m * (i + pfem->nel) + i + pfem->nel] = -xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
-		//	//dgdx[m * (i + 2 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 3 * pfem->nel];
-		//	//dgdx[m * (i + 3 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 2 * pfem->nel];
-		//}
+		for (int i = 0; i < pfem->nel; ++i)
+		{
+			g[i] = theta_min - xval[i + pfem->nel] - xval[i + 2 * pfem->nel] - xval[i + 3 * pfem->nel];
+			//g[i + pfem->nel] = 1e-3f - xval[i + pfem->nel] * xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
+			dgdx[m * (i + pfem->nel) + i] = -1;
+			dgdx[m * (i + 2 * pfem->nel) + i] = -1;
+			dgdx[m * (i + 3 * pfem->nel) + i] = -1;
+			//dgdx[m * (i + pfem->nel) + i + pfem->nel] = -xval[i + 2 * pfem->nel] * xval[i + 3 * pfem->nel];
+			//dgdx[m * (i + 2 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 3 * pfem->nel];
+			//dgdx[m * (i + 3 * pfem->nel) + i + pfem->nel] = -xval[i + pfem->nel] * xval[i + 2 * pfem->nel];
+		}
 		for (int i = 0; i < n; ++i)
 		{
 			if (i < pfem->nel)
@@ -103,6 +103,8 @@ public:
 
 	void solve()
 	{
+		string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+
 		while (logger.change > 0.01f && solver.iter < logger.maxiter && solver.iter < logger.miniter + 50)
 		{
 			pfem->elem.predict(xval, pfem->S, pfem->dSdx);
@@ -118,6 +120,10 @@ public:
 				logger.minf = f;
 			}
 			solver.Update(xval, dfdx, g, dgdx, xmin, xmax);
+			//savearr(outpath + "dfdxc.txt", dfdx, n);
+			//savearr(outpath + "gc.txt", g, m);
+			//savearr(outpath + "dgdxc.txt", dgdx, m * n);
+			//savemat(outpath + "Uc.txt", pfem->U);
 			pfem->elem.filter(xval);
 			logger.change = 0;
 			for (int i = 0; i < n; ++i)
@@ -127,7 +133,6 @@ public:
 			if (solver.iter == 1)
 				break;
 		}
-		string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
 		savearr(outpath + "xc.txt", xval, n);
 		savearr(outpath + "objc.txt", logger.flist,logger.maxiter);
 	}

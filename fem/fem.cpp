@@ -57,7 +57,7 @@ Femproblem::~Femproblem()
 	delete[] dSdx;
 }
 
-inline Eigen::VectorXi remap(vector<int>& freeidx, Eigen::VectorXi& a)
+inline Eigen::VectorXi remap(vector<int>& freeidx, Eigen::VectorXi a)
 {
 	auto b = a(freeidx);
 	map<int, vector<int>> map;

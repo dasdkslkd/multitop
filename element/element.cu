@@ -96,3 +96,18 @@ void filter(gmatd& v)
 	cudaDeviceSynchronize();
 	cuda_error_check;
 }
+
+void filter(double* x, int nel)
+{
+	double rho_min = 0.3;
+	double theta_min = PI / 18;
+	double lam1 = 600.;
+	double lam2 = 60 * 180 / PI;
+	for (int i = 0; i < 4 * nel; ++i)
+	{
+		if (i < nel)
+			x[i] /= (1 + std::exp(-lam1 * (x[i] - rho_min)));
+		else
+			x[i] = std::max(x[i], theta_min) / (1 + exp(-lam2 * (x[i] - theta_min / 2)));
+	}
+}

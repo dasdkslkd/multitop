@@ -13,6 +13,14 @@ void printgmat(const gpumat<scalar>& v)
 	std::cout << std::endl;
 }
 
+template<typename T>
+void savegmat(gpumat<T>& v, string filename)
+{
+	T* host = new T[v.size()];
+	v.download(host);
+	savearr(filename, host, v.size());
+}
+
 void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F,  gpumat<double>& U)
 {
 	static std::vector<Eigen::Triplet<double>> triplist(freeidx.size());
@@ -54,6 +62,15 @@ void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, 
 	{
 		sensitivity(dSdx, coef, dskdx, temp, i, nel);
 		dfdx.set_by_index(i, 1, matprod(U.transpose()*(-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs, ik.size())).data(), cudaMemcpyDeviceToDevice);
+		//if (i == 0)
+		//{
+		//	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+		//	savegmat(ik, outpath + "ikg.txt");
+		//	savegmat(jk, outpath + "jkg.txt");
+		//	savegmat(dskdx, outpath + "dskdxg.txt");
+		//	savegmat(U, outpath + "Ug.txt");
+		//}
+
 		if (multiobj && i < nel && x.get_item(i)>1e-3)
 		{
 			sum += std::exp(-std::pow(my_erfinvf(2 * x.get_item(i) - 1), 2));
