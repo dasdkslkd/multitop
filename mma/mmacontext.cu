@@ -102,17 +102,17 @@ void solve_g(
 			minf = f;
 		}
 
-		cout << m << ' ' << n << ' ' << iter << endl;
-		savearr(outpath + "xin.txt", x_h, n);
-		savearr(outpath + "xmin.txt", xmin_h, n);
-		savearr(outpath + "xmax.txt", xmax_h, n);
-		savearr(outpath + "xold1.txt", xold1, n);
-		savearr(outpath + "xold2.txt", xold2, n);
-		savearr(outpath + "dfdx.txt", dfdx_h, n);
-		savearr(outpath + "g.txt", g_h, m);
-		savearr(outpath + "dgdx.txt", dgdx_h, m*n);
-		savearr(outpath + "low.txt", low, n);
-		savearr(outpath + "upp.txt", upp, n);
+		//cout << m << ' ' << n << ' ' << iter << endl;
+		//savearr(outpath + "xin.txt", x_h, n);
+		//savearr(outpath + "xmin.txt", xmin_h, n);
+		//savearr(outpath + "xmax.txt", xmax_h, n);
+		//savearr(outpath + "xold1.txt", xold1, n);
+		//savearr(outpath + "xold2.txt", xold2, n);
+		//savearr(outpath + "dfdx.txt", dfdx_h, n);
+		//savearr(outpath + "g.txt", g_h, m);
+		//savearr(outpath + "dgdx.txt", dgdx_h, m*n);
+		//savearr(outpath + "low.txt", low, n);
+		//savearr(outpath + "upp.txt", upp, n);
 
 		mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.1);
 		//savegmat(U, outpath + "Ug.txt");
