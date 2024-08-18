@@ -3,9 +3,9 @@
 
 int main()
 {
-	int nelx = 6;
-	int nely = 3;
-	int nelz = 3;
+	int nelx = 24;
+	int nely = 12;
+	int nelz = 12;
 	double volfrac = 0.4;
 	Femproblem fem(nelx, nely, nelz, volfrac, 1);
 	vector<int> cons(3 * (nely + 1) * (nelz + 1));

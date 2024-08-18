@@ -34,10 +34,10 @@ void solve_g(
 	double* xold2 = new double[n];
 	double* low = new double[n];
 	double* upp = new double[n];
-	double* a = new double[n];
-	double* c = new double[n];
-	double* d = new double[n];
-	for (int i = 0; i < n; ++i)
+	double* a = new double[m];
+	double* c = new double[m];
+	double* d = new double[m];
+	for (int i = 0; i < m; ++i)
 	{
 		a[i] = 0;
 		c[i] = 1000;
@@ -93,13 +93,27 @@ void solve_g(
 		//dgdx.download(dgdx_h);
 		//auto dgdxt = dgdx.transpose();
 		//savegmat(dgdxt, outpath + "dgdxt.txt");
-		dgdx.transpose().download(dgdx_h);
+		//dgdx.transpose().download(dgdx_h);
+		dgdx.download(dgdx_h);
 		flist[iter - 1] = f;
 		if (f < minf)
 		{
 			miniter = iter;
 			minf = f;
 		}
+
+		cout << m << ' ' << n << ' ' << iter << endl;
+		savearr(outpath + "xin.txt", x_h, n);
+		savearr(outpath + "xmin.txt", xmin_h, n);
+		savearr(outpath + "xmax.txt", xmax_h, n);
+		savearr(outpath + "xold1.txt", xold1, n);
+		savearr(outpath + "xold2.txt", xold2, n);
+		savearr(outpath + "dfdx.txt", dfdx_h, n);
+		savearr(outpath + "g.txt", g_h, m);
+		savearr(outpath + "dgdx.txt", dgdx_h, m*n);
+		savearr(outpath + "low.txt", low, n);
+		savearr(outpath + "upp.txt", upp, n);
+
 		mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.1);
 		//savegmat(U, outpath + "Ug.txt");
 		//savearr(outpath + "dfdxg.txt", dfdx_h, n);
@@ -114,8 +128,8 @@ void solve_g(
 		for (int i = 0; i < n; ++i)
 			change = std::max(change, std::abs(x_h[i] - xold1[i]));
 		printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", iter, f, (g_h[m - 1] + 1) * volfrac, change);
-		//if (iter == 1)
-		//	break;
+		if (iter == 1)
+			break;
 	}
 	delete xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x.txt", x_h, n);
