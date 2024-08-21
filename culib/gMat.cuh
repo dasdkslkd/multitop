@@ -870,36 +870,36 @@ gpumat<scalar> abs(const gpumat<scalar>& v)
 }
 
 template<typename scalar>
-gpumat<scalar> concat(const std::vector<gpumat<scalar>> vlist, int32_t axis = 0)
+gpumat<scalar> concat(const std::vector<gpumat<scalar>*> vlist, int32_t axis = 0)
 {
 	int32_t num = vlist.size();
 	int32_t len = 0;
 	std::vector<int32_t> lenlist;
-	int32_t match_size = axis == 0 ? vlist[0].cols() : vlist[0].rows();
+	int32_t match_size = axis == 0 ? vlist[0]->cols() : vlist[0]->rows();
 	if (axis == 0)
 	{
 		for (auto v : vlist)
 		{
-			if (match_size != v.cols())
+			if (match_size != v->cols())
 			{
 				printf("unmatched mat shape");
 				exit(300);
 			}
 			lenlist.push_back(len);
-			len += v.rows();
+			len += v->rows();
 		}
 	}
 	else if (axis == 1)
 	{
 		for (auto v : vlist)
 		{
-			if (match_size != v.rows())
+			if (match_size != v->rows())
 			{
 				printf("unmatched mat shape");
 				exit(300);
 			}
 			lenlist.push_back(len);
-			len += v.cols();
+			len += v->cols();
 		}
 	}
 	gpumat<scalar> rst;
@@ -913,7 +913,7 @@ gpumat<scalar> concat(const std::vector<gpumat<scalar>> vlist, int32_t axis = 0)
 			auto v = vlist[i];
 			for (int j = 0; j < match_size; ++j)
 			{
-				cudaMemcpy(data + lenlist[i] + j * len, v.data() + j * v.rows(), v.rows() * sizeof(scalar), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(data + lenlist[i] + j * len, v->data() + j * v->rows(), v->rows() * sizeof(scalar), cudaMemcpyDeviceToDevice);
 			}
 		}
 	}
@@ -922,7 +922,7 @@ gpumat<scalar> concat(const std::vector<gpumat<scalar>> vlist, int32_t axis = 0)
 		rst.resize(match_size, len);
 		scalar* data = rst.data();
 		for (int i = 0; i < num; ++i)
-			cudaMemcpy(data + match_size * lenlist[i], vlist[i].data(), vlist[i].size() * sizeof(scalar), cudaMemcpyDeviceToDevice);
+			cudaMemcpy(data + match_size * lenlist[i], vlist[i]->data(), vlist[i]->size() * sizeof(scalar), cudaMemcpyDeviceToDevice);
 	}
 	cuda_error_check;
 	return rst;

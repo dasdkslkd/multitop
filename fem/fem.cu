@@ -90,14 +90,17 @@ void computegdg(gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, cons
 	{
 		ttt = theta_min - x.get_item(i + nel) - x.get_item(i + 2 * nel) - x.get_item(i + 3 * nel);
 		g.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
-		ttt = -1;
-		dgdx.set_by_index(m * (i + nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
-		dgdx.set_by_index(m * (i + 2 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
-		dgdx.set_by_index(m * (i + 3 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
 	}
 	static bool dummy = false;
 	if (!dummy)
 	{
+		for (int i = 0; i < nel; ++i)
+		{
+			ttt = -1;
+			dgdx.set_by_index(m * (i + nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+			dgdx.set_by_index(m * (i + 2 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+			dgdx.set_by_index(m * (i + 3 * nel) + i, 1, &ttt, cudaMemcpyHostToDevice);
+		}
 		for (int i = 0; i < 4 * nel; ++i)
 		{
 			ttt = 1. / nel / volfrac;
