@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "gMat.cuh"
+#include "../culib/gMat.cuh"
 #include "cusolverDn.h"
 using gmatd = gpumat<double>;
 
@@ -46,6 +46,34 @@ __global__ void calAlam_kernel(double* Alam, const double* GG, const double* dia
 		}
 		if (row == col)
 			sum += diaglamyi[row];
+		Alam[col * m + row] = sum;
+	}
+}
+
+__global__ void calAlam2_kernel(double* Alam, const double* GG, const double* diagxinv, const double* diaglamyi, int m, int n)
+{
+	const int BlockSize = 16;
+	int col = blockDim.x * blockIdx.x + threadIdx.x;
+	int row = blockDim.y * blockIdx.y + threadIdx.y;
+	if (col < m && row < m)
+	{
+		int tidx = threadIdx.x;
+		int tidy = threadIdx.y;
+		double sum = 0.;
+		__shared__ double as[BlockSize][BlockSize];
+		__shared__ double bs[BlockSize][BlockSize];
+		int tilesx = (n + BlockSize - 1) / BlockSize;
+		for (int i = 0; i < tilesx; ++i)
+		{
+			as[tidy][tidx] = GG[(i * BlockSize + tidx) * m + row];
+			bs[tidy][tidx] = GG[(i * BlockSize + tidy) * m + col];
+			__syncthreads();
+			for (int l = 0; l < BlockSize; ++l)
+				sum += as[tidy][l] * bs[l][tidx] * diagxinv[i * BlockSize + l];
+			if (row = col)
+				sum += diaglamyi[row];
+			__syncthreads();
+		}
 		Alam[col * m + row] = sum;
 	}
 }
@@ -118,7 +146,7 @@ void solveAb(gmatd& AA, gmatd& b, gmatd& dlam, gmatd& dz)
 		printf("%d-th param is wrong\n", -info);
 
 	cusolverDnXgetrs(handle, param, CUBLAS_OP_N, m, 1, CUDA_R_64F, AA.data(), m, ipiv.data(), CUDA_R_64F, b.data(), m, d_info);
-	cuda_error_check;	
+	cuda_error_check;
 
 	cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 	if (info < 0)
@@ -236,7 +264,7 @@ auto subsolv(const int m, const int n, const double epsimin, const gmatd& low, c
 				AAr2 = (concat(std::vector<gmatd*>({ &a,&tmp }))).transpose();
 				AA = concat(std::vector<gmatd*>({ &AAr1,&AAr2 }));
 				solveAb(AA, bb, dlam, dz);
-				dx = -1.*delx / diagx - matprod(GG.transpose(), dlam) / diagx;
+				dx = -1. * delx / diagx - matprod(GG.transpose(), dlam) / diagx;
 			}
 			else {
 				//use diaglamyi as inverse
@@ -373,7 +401,7 @@ void mmasub(const int m, const int n, int iter, gmatd& x, const gmatd& xmin, con
 	xlinv = 1. / xl1;
 	static gmatd p0, q0, pq0;
 	p0 = max(dfdx, 0.);
-	q0 = max(-1.*dfdx, 0.);
+	q0 = max(-1. * dfdx, 0.);
 	pq0 = 1e-3 * (p0 + q0) + raa0 * xmamiinv;
 	p0 += pq0;
 	p0 *= ux2;

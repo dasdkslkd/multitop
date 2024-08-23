@@ -133,8 +133,8 @@ void solve_g(
 		for (int i = 0; i < n; ++i)
 			change = std::max(change, std::abs(x.get_item(i) - xold1g.get_item(i)));
 		printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", iter, f, (g.get_item(m - 1) + 1) * volfrac, change);
-		//if (iter == 2)
-		//	break;
+		if (iter == 1)
+			break;
 	}
 	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x.txt", x_h, n);
