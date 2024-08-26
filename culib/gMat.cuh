@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include "cublas_v2.h"
 
 #ifndef cuda_error_check
 #define cuda_error_check do{ \
@@ -210,7 +211,7 @@ private:
 	size_t _col = 0;
 	//helper func
 public:
-	typedef scalar scalar;
+	//typedef scalar scalar;
 
 	//return referrance to data ptr
 	scalar*& data() { return _data; }
@@ -671,7 +672,7 @@ public:
 	{
 		scalar* host = new scalar[size()];
 		download(host);
-		scalar ans = DBL_MIN;
+		scalar ans = -1e308;
 		for (int i = 0; i < size(); ++i)
 			ans = std::max(ans, host[i]);
 		delete[] host;
@@ -725,6 +726,13 @@ gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
 	grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
 	matprod_kernel << <grid, block >> > (v1.data(), v2.data(), rst.data(), v1.rows(), v1.cols(), rst.cols());
 	cudaDeviceSynchronize();
+
+	//cublasHandle_t handle;
+	//cublasCreate(&handle);
+	//double alpha = 1., beta = 0.;
+	//cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, v1.rows(), v2.cols(), v1.cols(), &alpha, v1.data(), v1.rows(), v2.data(), v2.rows(), &beta, rst.data(), v1.rows());
+	//cublasDestroy(handle);
+
 	cuda_error_check;
 	return rst;
 }

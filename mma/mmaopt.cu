@@ -2,6 +2,7 @@
 #include "device_launch_parameters.h"
 #include "../culib/gMat.cuh"
 #include "cusolverDn.h"
+#include "../IO/matrixIO.h"
 using gmatd = gpumat<double>;
 
 __global__ void calPQ_kernel(double* P, double* Q, const double* PQ, const double* ux2, const double* xl2, const int n, const int m)
@@ -41,24 +42,22 @@ __global__ void calAlam_kernel(double* Alam, const double* GG, const double* dia
 	{
 		double sum = 0.;
 		for (int i = 0; i < n; ++i)
-		{
 			sum += GG[i * m + row] * GG[i * m + col] * diagxinv[i];
-		}
 		if (row == col)
 			sum += diaglamyi[row];
 		Alam[col * m + row] = sum;
 	}
 }
 
+template<int BlockSize>
 __global__ void calAlam2_kernel(double* Alam, const double* GG, const double* diagxinv, const double* diaglamyi, int m, int n)
 {
-	const int BlockSize = 16;
 	int col = blockDim.x * blockIdx.x + threadIdx.x;
 	int row = blockDim.y * blockIdx.y + threadIdx.y;
-	if (col < m && row < m)
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+	if (col < m && row < m && tidx < BlockSize && tidy < BlockSize)
 	{
-		int tidx = threadIdx.x;
-		int tidy = threadIdx.y;
 		double sum = 0.;
 		__shared__ double as[BlockSize][BlockSize];
 		__shared__ double bs[BlockSize][BlockSize];
@@ -70,10 +69,10 @@ __global__ void calAlam2_kernel(double* Alam, const double* GG, const double* di
 			__syncthreads();
 			for (int l = 0; l < BlockSize; ++l)
 				sum += as[tidy][l] * bs[l][tidx] * diagxinv[i * BlockSize + l];
-			if (row = col)
-				sum += diaglamyi[row];
 			__syncthreads();
 		}
+		if (row == col)
+			sum += diaglamyi[row];
 		Alam[col * m + row] = sum;
 	}
 }
@@ -104,6 +103,14 @@ void calGG(const gmatd& P, const gmatd& Q, gmatd& GG, const gmatd& uxinv2, const
 	cuda_error_check;
 }
 
+template<typename T>
+void savegmat(gpumat<T>& v, string filename)
+{
+	T* host = new T[v.size()];
+	v.download(host);
+	savearr(filename, host, v.size());
+}
+
 void calAlam(gmatd& Alam, const gmatd& diagxinv, const gmatd& diaglamyi, const gmatd& GG)
 {
 	double* Adata = Alam.data();
@@ -113,7 +120,10 @@ void calAlam(gmatd& Alam, const gmatd& diagxinv, const gmatd& diaglamyi, const g
 	dim3 grid, block;
 	block = dim3(16, 16, 1);
 	grid = dim3(std::ceil(GG.rows() / 16.), std::ceil(GG.rows() / 16.), 1);
+	//calAlam2_kernel<16> << <grid, block >> > (Adata, Gdata, xinv, lamyi, GG.rows(), GG.cols());
+	//savegmat(Alam, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Alam2.txt");
 	calAlam_kernel << <grid, block >> > (Adata, Gdata, xinv, lamyi, GG.rows(), GG.cols());
+	//savegmat(Alam, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Alam.txt");
 	cudaDeviceSynchronize();
 	cuda_error_check;
 }

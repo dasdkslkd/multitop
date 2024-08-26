@@ -67,9 +67,14 @@ void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp
 	static int r;
 	q = i / nel;
 	r = i - q * nel;
-	temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
-	dsKdx = std::move(matprod(coef, temp));
-	temp.set_from_value(0.);
+	static gmatd tmp1(9, 1), tmp2(coef.rows(), 1);
+	tmp1.set_by_index(0, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
+	tmp2 = matprod(coef, tmp1);
+	dsKdx.set_from_value(0.);
+	dsKdx.set_by_index(coef.rows() * r, coef.rows(), tmp2.data(), cudaMemcpyDeviceToDevice);
+	//temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
+	//dsKdx = std::move(matprod(coef, temp));
+	//temp.set_from_value(0.);
 }
 
 void filter(gmatd& v)
