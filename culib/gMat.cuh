@@ -52,7 +52,9 @@ __global__ void map_kernel(int32_t n, Lam func)
 {
 	int32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < n)
+	{
 		func(tid);
+	}
 }
 
 template<typename scalar>
@@ -598,11 +600,18 @@ public:
 		return v3;
 	}
 
+	//sometimes doesn't work
 	gpumat operator()(const std::vector<int32_t>& idx)
 	{
 		gpumat v2(idx.size(), 1);
-		auto [grid, block] = kernel_param(size());
-		map_kernel << <grid, block >> > (_data, v2.data(), idx.size(), [=]__device__(scalar xx) { return xx; });
+		auto [grid, block] = kernel_param(idx.size());
+		int32_t* idata = nullptr;
+		cudaMalloc(&idata, idx.size() * sizeof(int32_t));
+		cudaMemcpy(idata, idx.data(), idx.size() * sizeof(int32_t), cudaMemcpyHostToDevice);
+		scalar* v2data = v2.data();
+		const scalar* vdata = this->data();
+		map_kernel << <grid, block >> > (idx.size(), [=]__device__(int32_t xx) { v2data[xx] = vdata[idata[xx]]; });
+		cudaFree(idata);
 		cudaDeviceSynchronize();
 		cuda_error_check;
 		return v2;
@@ -740,7 +749,7 @@ gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
 //coo-type sparse matrix A*v
 //non unique rowid in a col supported
 template<typename scalar>
-gpumat<scalar> spmatprodcoo(const gpumat<scalar>& v, const gpumat<int32_t>& rowid, const gpumat<int32_t>& colid, const gpumat<scalar>& val, const int32_t rows, const int32_t cols, const int32_t nnz)
+gpumat<scalar> spmatprodcoo(const gpumat<scalar>& v, const gpumat<int32_t>& rowid, const gpumat<int32_t>& colid, const gpumat<scalar>& val, const int32_t rows, const int32_t cols/*, const int32_t nnz*/)
 {
 	if (cols != v.rows())
 	{
@@ -748,6 +757,7 @@ gpumat<scalar> spmatprodcoo(const gpumat<scalar>& v, const gpumat<int32_t>& rowi
 		exit(301);
 	}
 	gpumat<scalar> rst(rows, 1);
+	int32_t nnz = val.size();
 	auto [grid, block] = kernel_param(nnz);
 	spmatprodcoo_kernel << <grid, block >> > (rst.data(), v.data(), rowid.data(), colid.data(), val.data(), rows, cols, nnz);
 	cudaDeviceSynchronize();

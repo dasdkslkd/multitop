@@ -61,7 +61,7 @@ void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)
 	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-post.csv", sktest, sk.size());
 }
 
-void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp, const int& i, const int& nel)
+void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, std::vector<int32_t>& idx, const int& i, const int& nel)
 {
 	static int q;
 	static int r;
@@ -72,6 +72,8 @@ void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp
 	tmp2 = matprod(coef, tmp1);
 	dsKdx.set_from_value(0.);
 	dsKdx.set_by_index(coef.rows() * r, coef.rows(), tmp2.data(), cudaMemcpyDeviceToDevice);
+	for (int kk = 0; kk < coef.rows(); ++kk)
+		idx[kk] = coef.rows() * r + kk;
 	//temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
 	//dsKdx = std::move(matprod(coef, temp));
 	//temp.set_from_value(0.);

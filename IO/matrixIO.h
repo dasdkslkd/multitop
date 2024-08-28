@@ -87,3 +87,20 @@ inline Eigen::MatrixXd readmat(string filename)
 	// note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
 	return Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
 }
+
+inline vector<double> readmatrix(string filename)
+{
+	vector<double> matrixEntries;
+	ifstream matrixDataFile(filename);
+	string matrixRowString;
+	string matrixEntry;
+	int matrixRowNumber = 0;
+	while (getline(matrixDataFile, matrixRowString))
+	{
+		stringstream matrixRowStringStream(matrixRowString);
+		while (getline(matrixRowStringStream, matrixEntry, ','))
+			matrixEntries.push_back(stod(matrixEntry));
+		matrixRowNumber++;
+	}
+	return matrixEntries;
+}

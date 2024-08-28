@@ -47,7 +47,7 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	U.set_by_index(idx.data(), freedofs.size(), uuu.data());
 }
 
-void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& temp, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host)
+void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host)
 {
 	static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
 	//double* U_h = new double[U.size()];
@@ -58,17 +58,30 @@ void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, 
 	f = matprod(U.transpose(), F).get_item(0);
 	double sum = 0;
 	int nel = static_cast<int>(dfdx.size() / 4);
+	static std::vector<int32_t> idx(coef.rows());
+	static gpumat<int> iknz(coef.rows(), 1), jknz(coef.rows(), 1);
+	static gmatd dskdxnz(coef.rows(), 1);
 	for (int i = 0; i < 4 * nel; ++i)
 	{
-		sensitivity(dSdx, coef, dskdx, temp, i, nel);
-		dfdx.set_by_index(i, 1, matprod(U.transpose()*(-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs, ik.size())).data(), cudaMemcpyDeviceToDevice);
+		sensitivity(dSdx, coef, dskdx, idx, i, nel);
+		iknz.set_by_index(0, coef.rows(), ik.data() + idx[0], cudaMemcpyDeviceToDevice);
+		jknz.set_by_index(0, coef.rows(), jk.data() + idx[0], cudaMemcpyDeviceToDevice);
+		dskdxnz.set_by_index(0, coef.rows(), dskdx.data() + idx[0], cudaMemcpyDeviceToDevice);
+		dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, iknz, jknz, dskdxnz, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
+		//cout << dfdx.get_item(i) << ' ';
+		//dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
+		//cout << dfdx.get_item(i) << endl;
 		//if (i == 0)
 		//{
 		//	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
 		//	savegmat(ik, outpath + "ikg.txt");
 		//	savegmat(jk, outpath + "jkg.txt");
+		//	savegmat(ik(idx), outpath + "iknz.txt");
+		//	savegmat(jk(idx), outpath + "jknz.txt");
 		//	savegmat(dskdx, outpath + "dskdxg.txt");
-		//	savegmat(U, outpath + "Ug.txt");
+		//	savegmat(dskdx(idx), outpath + "dskdxnz.txt");
+		//	savevec(outpath + "idx.txt", idx);
+		//	//savegmat(U, outpath + "Ug.txt");
 		//}
 
 		if (multiobj && i < nel && x.get_item(i)>1e-3)

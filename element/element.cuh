@@ -12,7 +12,7 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk);
 
-void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, gmatd& temp, const int& i, const int& nel);
+void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, std::vector<int32_t>& idx, const int& i, const int& nel);
 
 void filter(gmatd& v);
 

@@ -3,7 +3,7 @@ project(multitop)
 #set(CMAKE_BUILD_TYPE RELEASE)
 
 # compile options
-set(CMAKE_CXX_FLAGS_DEBUG "-O2 -Ob1 -MDd")
+#set(CMAKE_CXX_FLAGS_DEBUG "-O2 -Ob1 -MDd")
 #add_compile_options(-O2)
 #add_compile_options(-Ob1)
 set(CMAKE_CXX_STANDARD 17)

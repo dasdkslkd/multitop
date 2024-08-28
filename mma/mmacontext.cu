@@ -86,13 +86,22 @@ void solve_g(
 
 	while (change > 0.01 && iter < maxiter && iter < miniter + 50)
 	{
+		//auto dskdxt = readmatrix("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dskdxg.txt");
+		//auto idx = readmatrix(outpath + "idx.txt");
+		//vector<int> idxi(idx.size());
+		//for (int i = 0; i < idx.size(); ++i)
+		//	idxi[i] = idx[i];
+		//gpumat<double> dskdxg;
+		//dskdxg.set_from_host(dskdxt.data(), dskdxt.size(), 1);
+		//savegmat(dskdxg(idxi), "dskdxg.txt");
+
 		double change = 0.;
 		++iter;
 		predict(x, S, dSdx, nel, model);
 		elastisity(S, coef, sk);
 		sk.download(sk_h.data());
 		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h, U);
-		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, temp, coef, ndof, multiobj, F_h);
+		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, coef, ndof, multiobj, F_h);
 		//dfdx.download(dfdx_h);
 		computegdg(x, g, dgdx, volfrac, m, nel);
 		//g.download(g_h);
