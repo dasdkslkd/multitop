@@ -42,7 +42,7 @@ __global__ void calAlam_kernel(double* Alam, const double* GG, const double* dia
 	{
 		double sum = 0.;
 		for (int i = 0; i < n; ++i)
-			sum += GG[i * m + row] * GG[i * m + col] * diagxinv[i];
+			sum += GG[i * m + row] * GG[i * m + col] /** diagxinv[i]*/;
 		if (row == col)
 			sum += diaglamyi[row];
 		Alam[col * m + row] = sum;
@@ -52,55 +52,24 @@ __global__ void calAlam_kernel(double* Alam, const double* GG, const double* dia
 template<int BlockSize>
 __global__ void calAlam2_kernel(double* Alam, const double* GG, const double* diagxinv, const double* diaglamyi, int m, int n)
 {
+	__shared__ double GGs[BlockSize][BlockSize];
 	int col = blockDim.x * blockIdx.x + threadIdx.x;
 	int row = blockDim.y * blockIdx.y + threadIdx.y;
-	int tidx = threadIdx.x;
-	int tidy = threadIdx.y;
-	if (col < m && row < m && tidx < BlockSize && tidy < BlockSize)
+	if (col < m && row < m)
 	{
 		double sum = 0.;
-		__shared__ double as[BlockSize][BlockSize];
-		__shared__ double bs[BlockSize][BlockSize];
-		int tilesx = (n + BlockSize - 1) / BlockSize;
-		for (int i = 0; i < tilesx; ++i)
+		for (int i = 0; i < n; i += BlockSize)
 		{
-			as[tidy][tidx] = GG[(i * BlockSize + tidx) * m + row];
-			bs[tidy][tidx] = GG[(i * BlockSize + tidy) * m + col];
+			GGs[threadIdx.y][threadIdx.x] = GG[(i + threadIdx.x) * m + row] * GG[(i + threadIdx.y) * m + col];
 			__syncthreads();
-			for (int l = 0; l < BlockSize; ++l)
-				sum += as[tidy][l] * bs[l][tidx] * diagxinv[i * BlockSize + l];
+			for (int j = 0; j < BlockSize; ++j)
+				sum += GGs[threadIdx.y][j] * diagxinv[i + j];
 			__syncthreads();
 		}
 		if (row == col)
 			sum += diaglamyi[row];
 		Alam[col * m + row] = sum;
 	}
-}
-
-void calPQ(gmatd& P, gmatd& Q, const gmatd& PQ, const gmatd& ux2, const gmatd& xl2)
-{
-	double* Pdata = P.data();
-	double* Qdata = Q.data();
-	const double* PQdata = PQ.data();
-	const double* udata = ux2.data();
-	const double* ldata = xl2.data();
-	auto [grid, block] = kernel_param(ux2.size());
-	calPQ_kernel << <grid, block >> > (Pdata, Qdata, PQdata, udata, ldata, P.cols(), P.rows());
-	cudaDeviceSynchronize();
-	cuda_error_check;
-}
-
-void calGG(const gmatd& P, const gmatd& Q, gmatd& GG, const gmatd& uxinv2, const gmatd& xlinv2)
-{
-	double* Gdata = GG.data();
-	const double* Pdata = P.data();
-	const double* Qdata = Q.data();
-	const double* udata = uxinv2.data();
-	const double* ldata = xlinv2.data();
-	auto [grid, block] = kernel_param(uxinv2.size());
-	calGG_kernel << <grid, block >> > (Pdata, Qdata, Gdata, udata, ldata, P.cols(), P.rows());
-	cudaDeviceSynchronize();
-	cuda_error_check;
 }
 
 template<typename T>
@@ -121,10 +90,12 @@ void calAlam(gmatd& Alam, const gmatd& diagxinv, const gmatd& diaglamyi, const g
 	block = dim3(16, 16, 1);
 	grid = dim3(std::ceil(GG.rows() / 16.), std::ceil(GG.rows() / 16.), 1);
 	//calAlam2_kernel<16> << <grid, block >> > (Adata, Gdata, xinv, lamyi, GG.rows(), GG.cols());
+	//cudaDeviceSynchronize();
 	//savegmat(Alam, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Alam2.txt");
 	calAlam_kernel << <grid, block >> > (Adata, Gdata, xinv, lamyi, GG.rows(), GG.cols());
 	//savegmat(Alam, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Alam.txt");
 	cudaDeviceSynchronize();
+	//exit(111);
 	cuda_error_check;
 }
 

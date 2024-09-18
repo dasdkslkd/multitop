@@ -22,9 +22,8 @@ void solve_g(
 	//fem
 	int nelx, int nely, int nelz, double volfrac, bool multiobj, Eigen::VectorXd & F_h, vector<int>&freedofs_h, vector<int>&freeidx_h, double* S_h, double* dSdx_h, vector<int>&ik_h, vector<int>&jk_h, vector<int>&ikfree_h, vector<int>&jkfree_h, vector<double>&sk_h, vector<double>&dskdx_h, vector<double>&U_h,
 	//elem
-	double* temp_h, Eigen::MatrixXd& coef_h, torch::jit::Module model)
+	double* temp_h, Eigen::MatrixXd& coef_h, torch::jit::Module model,string outpath)
 {
-	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
 	//printf("1");
 	double change = 1.;
 	int iter = 0;
@@ -116,7 +115,7 @@ void solve_g(
 			minf = f;
 		}
 
-		//cout << m << ' ' << n << ' ' << iter << endl;
+		cout << m << ' ' << n << ' ' << iter << endl;
 		//savearr(outpath + "xin.txt", x_h, n);
 		//savearr(outpath + "xmin.txt", xmin_h, n);
 		//savearr(outpath + "xmax.txt", xmax_h, n);
@@ -125,12 +124,14 @@ void solve_g(
 		//savearr(outpath + "dfdx.txt", dfdx_h, n);
 		//savearr(outpath + "g.txt", g_h, m);
 		//savearr(outpath + "dgdx.txt", dgdx_h, m*n);
+		savegmat(g, outpath + "g.txt");
+		savegmat(dgdx, outpath + "dgdx.txt");
 		//savearr(outpath + "low.txt", low, n);
 		//savearr(outpath + "upp.txt", upp, n);
 
 		//mmasub(m, n, iter, x_h, xmin_h, xmax_h, xold1, xold2, f, dfdx_h, g_h, dgdx_h, low, upp, 1, a, c, d, 0.1);
 		//savearr(outpath + "x.txt", x_h, n);
-		gmatd a(m, 1), c(m, 1, 1000.), d(m, 1);
+		static gmatd a(m, 1), c(m, 1, 1000.), d(m, 1);
 		mmasub(m, n, iter, x, xmin, xmax, xold1g, xold2g, dfdx, g, dgdx, lowg, uppg, 1, a, c, d, 0.1);
 
 		//filter(x_h, nel);
@@ -143,7 +144,11 @@ void solve_g(
 			change = std::max(change, std::abs(x.get_item(i) - xold1g.get_item(i)));
 		printf("It:%3d Obj:%5.1f Vol:%4.3f Ch:%5.3f\n", iter, f, (g.get_item(m - 1) + 1) * volfrac, change);
 		//if (iter == 1)
-			//break;
+		//	break;
+		if (iter % 10 == 0)
+		{
+			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
+		}
 	}
 	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x.txt", x_h, n);

@@ -10,7 +10,7 @@ extern "C"
 void solve_g(
 	int m, int n, double* x_h, double* dfdx_h, double* g_h, double* dgdx_h, double* xmin_h, double* xmax_h,
 	int nelx, int nely, int nelz, double volfrac, bool multiobj, Eigen::VectorXd & F_h, vector<int>&freedofs_h, vector<int>&freeidx_h, double* S_h, double* dSdx_h, vector<int>&ik_h, vector<int>&jk_h, vector<int>&ikfree_h, vector<int>&jkfree_h, vector<double>&sk_h, vector<double>&dskdx_h, vector<double>&U_h,
-	double* temp_h, Eigen::MatrixXd coef, torch::jit::Module model);
+	double* temp_h, Eigen::MatrixXd coef, torch::jit::Module model,string outpath);
 
 class mmacontext
 {
@@ -49,7 +49,7 @@ public:
 		logger.minf = 1e+9;
 		logger.flist = new double[logger.maxiter];
 		pfem = &fem;
-		m = 1 + pfem->nel;
+		m = 1 /*+ pfem->nel*/;
 		n = 4 * pfem->nel;
 		solver = MMASolver(n, m);
 		xval = pfem->x;
@@ -137,7 +137,7 @@ public:
 		savearr(outpath + "objc.txt", logger.flist,logger.maxiter);
 	}
 
-	void solve_gpu()
+	void solve_gpu(string outpath)
 	{
 		//std::vector<double> F(&pfem->F(0, 0), pfem->F.data() + pfem->F.size());
 		std::vector<int> ik(&pfem->ik(0, 0), pfem->ik.data() + pfem->ik.size());
@@ -148,7 +148,7 @@ public:
 		std::vector<double> dskdx(&pfem->dskdx(0, 0), pfem->dskdx.data() + pfem->dskdx.size());
 		std::vector<double> U(&pfem->U(0, 0), pfem->U.data() + pfem->U.size());
 
-		solve_g(m, n, xval, dfdx, g, dgdx, xmin, xmax, pfem->nelx, pfem->nely, pfem->nelz, pfem->volfrac, pfem->multiobj, pfem->F, pfem->freedofs, pfem->freeidx, pfem->S, pfem->dSdx, ik, jk, ikfree, jkfree, sk, dskdx, U, pfem->elem.temp, coef, pfem->elem.model);
+		solve_g(m, n, xval, dfdx, g, dgdx, xmin, xmax, pfem->nelx, pfem->nely, pfem->nelz, pfem->volfrac, pfem->multiobj, pfem->F, pfem->freedofs, pfem->freeidx, pfem->S, pfem->dSdx, ik, jk, ikfree, jkfree, sk, dskdx, U, pfem->elem.temp, coef, pfem->elem.model,outpath);
 	}
 };
 
