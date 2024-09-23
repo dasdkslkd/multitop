@@ -1,6 +1,7 @@
 //#include "element.h"
 #include "element.cuh"
 #include "../IO/matrixIO.h"
+#include <omp.h>
 //#include "../culib/cudaCommon.cuh"
 //#include "../culib/gpuVector.cuh"
 //using namespace gv;
@@ -15,6 +16,7 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 	if (!x_host)
 		x_host = (double*)malloc(4 * nel * sizeof(double));
 	x.download(x_host);
+#pragma omp parallel for
 	for (int i = 0; i < nel; ++i)
 	{
 		auto input = torch::tensor({ double((x_host[i] - 0.3) / 0.4),double(x_host[i + nel] * 2 / PI),double(x_host[i + 2 * nel] * 2 / PI),double(x_host[i + 3 * nel] * 2 / PI) });
@@ -81,7 +83,7 @@ void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, std::vector
 
 void filter(gmatd& v)
 {
-	
+
 	double* ptr = v.data();
 	size_t grid, block;
 	//make_kernel_param(&grid, &block, size(), 512);
@@ -96,9 +98,9 @@ void filter(gmatd& v)
 		double lam2 = 60 * 180 / PI;
 		if (eid < r)
 			ptr[eid] /= (1 + std::exp(-lam1 * (ptr[eid] - rho_min)));
-		else 
+		else
 			ptr[eid] = std::max(ptr[eid], theta_min) / (1 + exp(-lam2 * (ptr[eid] - theta_min / 2)));
-	}; 
+	};
 	map_kernel << <grid, block >> > (v.size(), merge);
 	cudaDeviceSynchronize();
 	cuda_error_check;

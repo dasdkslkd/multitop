@@ -729,18 +729,18 @@ gpumat<scalar> matprod(const gpumat<scalar>& v1, const gpumat<scalar>& v2)
 		exit(101);
 	}
 	gpumat<scalar> rst(v1.rows(), v2.cols());
-	dim3 grid, block;
-	//make_kernel_param2d(&grid, &block, rst.cols(), rst.rows());
-	block = dim3(32, 32, 1);
-	grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
-	matprod_kernel << <grid, block >> > (v1.data(), v2.data(), rst.data(), v1.rows(), v1.cols(), rst.cols());
-	cudaDeviceSynchronize();
 
-	//cublasHandle_t handle;
-	//cublasCreate(&handle);
-	//double alpha = 1., beta = 0.;
-	//cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, v1.rows(), v2.cols(), v1.cols(), &alpha, v1.data(), v1.rows(), v2.data(), v2.rows(), &beta, rst.data(), v1.rows());
-	//cublasDestroy(handle);
+	//dim3 grid, block;
+	//block = dim3(32, 32, 1);
+	//grid = dim3(std::ceil(rst.cols() / 32.), std::ceil(rst.rows() / 32.), 1);
+	//matprod_kernel << <grid, block >> > (v1.data(), v2.data(), rst.data(), v1.rows(), v1.cols(), rst.cols());
+	//cudaDeviceSynchronize();
+
+	cublasHandle_t handle;
+	cublasCreate(&handle);
+	double alpha = 1., beta = 0.;
+	cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, v1.rows(), v2.cols(), v1.cols(), &alpha, v1.data(), v1.rows(), v2.data(), v2.rows(), &beta, rst.data(), v1.rows());
+	cublasDestroy(handle);
 
 	cuda_error_check;
 	return rst;

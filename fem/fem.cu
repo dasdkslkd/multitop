@@ -1,5 +1,7 @@
 #include "fem.cuh"
 #include"../IO/matrixIO.h"
+#include "cusolverDn.h"
+#include <utility>
 gpumat<double> F;
 extern float my_erfinvf(float a);
 
@@ -21,11 +23,22 @@ void savegmat(gpumat<T>& v, string filename)
 	savearr(filename, host, v.size());
 }
 
-void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F,  gpumat<double>& U)
+__global__ void gatherK_kernel(int* ik, int* jk, double* sk, int* freeidx, double* K, int nfreedofs, int n)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < n && sk[freeidx[i]] != 0)
+		atomicAdd(&K[ik[i] + nfreedofs * jk[i]], sk[freeidx[i]]);
+}
+
+void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F, gpumat<double>& U)
 {
 	static std::vector<Eigen::Triplet<double>> triplist(freeidx.size());
+
 	for (int i = 0; i < freeidx.size(); ++i)
+	{
 		triplist[i] = Eigen::Triplet<double>(ikfree[i], jkfree[i], sk[freeidx[i]]);
+	}
+
 	static auto K = Eigen::SparseMatrix<double>(freedofs.size(), freedofs.size());
 	K.setFromTriplets(triplist.begin(), triplist.end());
 	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
@@ -44,7 +57,59 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	//for (auto v : sk)
 	//	std::cout << v << '\n';
 
+
 	U.set_by_index(idx.data(), freedofs.size(), uuu.data());
+}
+
+void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, vector<int>& freedofs, gpumat<double>& F, gpumat<double>& U)
+{
+	static gpumat<double> K(freedofs.size(), freedofs.size());
+	static gpumat<double> b(freedofs.size(), 1);
+	static gpumat<int> idx;
+	static bool dummy = (idx.set_from_host(freedofs.data(), freedofs.size(), 1), 1);
+	b = F(freedofs);
+	K.set_from_value(0);
+
+	dim3 grid = 0, block = 0;
+	auto pair = kernel_param(freeidx.size());
+	grid = pair.first;
+	block = pair.second;
+	gatherK_kernel << <grid, block >> > (ikfree.data(), jkfree.data(), sk.data(), freeidx.data(), K.data(), freedofs.size(), freeidx.size());
+	cudaDeviceSynchronize();
+	cuda_error_check;
+
+	cusolverDnHandle_t handle = NULL;
+	cusolverDnParams_t param;
+	size_t workdevice = 0, workhost = 0;
+	int32_t m = freedofs.size();
+	void* d_work = nullptr;
+	void* h_work = nullptr;
+	int* d_info = nullptr;
+	cudaMalloc(&d_info, sizeof(int));
+	static gpumat<int64_t> ipiv(m, 1);
+	ipiv.set_from_value(0);
+	cusolverDnCreate(&handle);
+	cusolverDnCreateParams(&param);
+	cusolverDnSetAdvOptions(param, CUSOLVERDN_GETRF, CUSOLVER_ALG_0);
+	cusolverDnXgetrf_bufferSize(handle, param, m, m, CUDA_R_64F, K.data(), m, CUDA_R_64F, &workdevice, &workhost);
+	cuda_error_check;
+	cudaMalloc(&d_work, workdevice);
+	h_work = malloc(workhost);
+	cusolverDnXgetrf(handle, param, m, m, CUDA_R_64F, K.data(), m, ipiv.data(), CUDA_R_64F, d_work, workdevice, h_work, workhost, d_info);
+	cuda_error_check;
+	int info = 0;
+	cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+	if (info < 0)
+		printf("%d-th param is wrong\n", -info);
+
+	cusolverDnXgetrs(handle, param, CUBLAS_OP_N, m, 1, CUDA_R_64F, K.data(), m, ipiv.data(), CUDA_R_64F, b.data(), m, d_info);
+	cuda_error_check;
+
+	cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+	if (info < 0)
+		printf("%d-th param is wrong\n", -info);
+
+	U.set_by_index(idx.data(), freedofs.size(), b.data());
 }
 
 void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host)
@@ -101,8 +166,18 @@ void computegdg(gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, cons
 	g.set_by_index(m - 1, 1, &ttt, cudaMemcpyHostToDevice);
 	//for (int i = 0; i < nel; ++i)
 	//{
-	//	ttt = theta_min - x.get_item(i + nel) - x.get_item(i + 2 * nel) - x.get_item(i + 3 * nel);
-	//	g.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
+		//ttt = theta_min - x.get_item(i + nel) - x.get_item(i + 2 * nel) - x.get_item(i + 3 * nel);
+		//g.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
+
+		//ttt = 1e-3 - x.get_item(i + nel) * x.get_item(i + 2 * nel) * x.get_item(i + 3 * nel);
+		//g.set_by_index(i + nel, 1, &ttt, cudaMemcpyHostToDevice);
+		//ttt = -x.get_item(i + 2 * nel) * x.get_item(i + 3 * nel);
+		//dgdx.set_by_index(m * (i + nel) + i + nel, 1, &ttt, cudaMemcpyHostToDevice);
+		//ttt = -x.get_item(i + nel) * x.get_item(i + 3 * nel);
+		//dgdx.set_by_index(m * (i + 2 * nel) + i + nel, 1, &ttt, cudaMemcpyHostToDevice);
+		//ttt = -x.get_item(i + nel) * x.get_item(i + 2 * nel);
+		//dgdx.set_by_index(m * (i + 3 * nel) + i + nel, 1, &ttt, cudaMemcpyHostToDevice);
+
 	//}
 	static bool dummy = false;
 	if (!dummy)

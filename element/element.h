@@ -91,7 +91,7 @@ public:
 		fill(temp, temp + 9 * nel, 0.f);
 	}
 
-	~spinodal() { 
+	~spinodal() {
 		delete[] temp;
 	}
 

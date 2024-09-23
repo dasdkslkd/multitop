@@ -6,10 +6,12 @@
 #include<Eigen/Core>
 #include<Eigen/SparseCore>
 #include<Eigen/IterativeLinearSolvers>
-#include<eigen3/unsupported/Eigen/KroneckerProduct>
+#include<unsupported/Eigen/KroneckerProduct>
 using std::vector;
 
 void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F, gpumat<double>& U);
+
+void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, vector<int>& freedofs, gpumat<double>& F, gpumat<double>& U);
 
 void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host);
 
