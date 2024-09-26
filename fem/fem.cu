@@ -2,7 +2,7 @@
 #include"../IO/matrixIO.h"
 #include "cusolverDn.h"
 #include <utility>
-gpumat<double> F;
+//gpumat<double> F;
 extern float my_erfinvf(float a);
 
 template<typename scalar>
@@ -30,7 +30,7 @@ __global__ void gatherK_kernel(int* ik, int* jk, double* sk, int* freeidx, doubl
 		atomicAdd(&K[ik[i] + nfreedofs * jk[i]], sk[freeidx[i]]);
 }
 
-void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F, gpumat<double>& U)
+void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F_h, gpumat<double>& U)
 {
 	static std::vector<Eigen::Triplet<double>> triplist(freeidx.size());
 
@@ -45,7 +45,7 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	cg.compute(K);
 	//savevec("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-g.csv", sk);
 	Eigen::VectorXd utemp;
-	utemp = cg.solve(F(freedofs));
+	utemp = cg.solve(F_h(freedofs));
 	static gpumat<double> uuu;
 	uuu.set_from_host(utemp.data(), freedofs.size(), 1);
 	static gpumat<int> idx;
@@ -61,12 +61,12 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	U.set_by_index(idx.data(), freedofs.size(), uuu.data());
 }
 
-void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, vector<int>& freedofs, gpumat<double>& F, gpumat<double>& U)
+void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, gpumat<int>& freedofs, gpumat<double>& F, gpumat<double>& U)
 {
 	static gpumat<double> K(freedofs.size(), freedofs.size());
 	static gpumat<double> b(freedofs.size(), 1);
-	static gpumat<int> idx;
-	static bool dummy = (idx.set_from_host(freedofs.data(), freedofs.size(), 1), 1);
+	//static gpumat<int> idx;
+	//static bool dummy = (idx.set_from_host(freedofs.data(), freedofs.size(), 1), 1);
 	b = F(freedofs);
 	K.set_from_value(0);
 
@@ -109,12 +109,18 @@ void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gp
 	if (info < 0)
 		printf("%d-th param is wrong\n", -info);
 
-	U.set_by_index(idx.data(), freedofs.size(), b.data());
+	cudaFree(d_info);
+	cudaFree(d_work);
+	free(h_work);
+	cusolverDnDestroyParams(param);
+	cusolverDnDestroy(handle);
+
+	U.set_by_index(freedofs.data(), freedofs.size(), b.data());
 }
 
-void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, Eigen::VectorXd& F_host)
+void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, gpumat<double>& F)
 {
-	static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
+	//static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
 	//double* U_h = new double[U.size()];
 	//U.download(U_h);
 	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\Uh.csv", U_h, U.size());

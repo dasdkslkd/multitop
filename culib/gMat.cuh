@@ -617,6 +617,19 @@ public:
 		return v2;
 	}
 
+	gpumat operator()(const gpumat<int32_t>& idx)
+	{
+		gpumat v2(idx.size(), 1);
+		auto [grid, block] = kernel_param(idx.size());
+		scalar* v2data = v2.data();
+		const scalar* vdata = this->data();
+		const int32_t* idata = idx.data();
+		map_kernel << <grid, block >> > (idx.size(), [=]__device__(int32_t xx) { v2data[xx] = vdata[idata[xx]]; });
+		cudaDeviceSynchronize();
+		cuda_error_check;
+		return v2;
+	}
+
 	gpumat<bool> operator<(const scalar val)
 	{
 		gpumat<bool> v2(_row, _col);

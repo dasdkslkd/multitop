@@ -70,7 +70,7 @@ void solve_g(
 	U.set_from_host(U_h.data(), ndof, 1);
 	temp.set_from_host(temp_h, 9, nel);
 	coef.set_from_host(coef_h.data(), 576, 9);
-	freedofs.set_from_host(freedofs_h.data(), freedofs.size(), 1);
+	freedofs.set_from_host(freedofs_h.data(), freedofs_h.size(), 1);
 	freeidx.set_from_host(freeidx_h.data(), freeidx_h.size(), 1);
 	ik.set_from_host(ik_h.data(), ik_h.size(), 1);
 	jk.set_from_host(jk_h.data(), jk_h.size(), 1);
@@ -117,7 +117,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-        solvefem_g(ikfree, jkfree, sk, freeidx, freedofs_h, F, U);
+        solvefem_g(ikfree, jkfree, sk, freeidx, freedofs, F, U);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefemg:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -128,7 +128,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, coef, ndof, multiobj, F_h);
+		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, coef, ndof, multiobj, F);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"fdf:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -201,8 +201,8 @@ void solve_g(
 			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
 		}
 
-		if (iter == 2)
-			break;
+		//if (iter == 2)
+		//	break;
 	}
 	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x0.txt", x_h, n);
