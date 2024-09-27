@@ -7,6 +7,9 @@
 #include "time.h"
 #endif
 
+gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef, xold1g, xold2g, lowg, uppg;
+gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
+
 template<typename T>
 void savegmat(gpumat<T>& v, string filename)
 {
@@ -53,8 +56,7 @@ void solve_g(
 	int ndof = 3 * (nelx + 1) * (nely + 1) * (nelz + 1);
 
 
-	gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef,xold1g,xold2g,lowg,uppg;
-	gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
+	
 
 	x.set_from_host(x_h, n, 1);
 	dfdx.set_from_host(dfdx_h, n, 1);
@@ -107,7 +109,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h, U);
+		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h/*, U*/);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefem:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -117,7 +119,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-        solvefem_g(ikfree, jkfree, sk, freeidx, freedofs, F, U);
+        solvefem_g(/*ikfree, jkfree, sk, freeidx, freedofs, F, U*/);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefemg:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -128,7 +130,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		computefdf(U, dSdx, dskdx, ik, jk, f, dfdx, x, coef, ndof, multiobj, F);
+		computefdf(/*U, dSdx, dskdx, ik, jk, */f/*, dfdx, x, coef*/, ndof, multiobj/*, F*/);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"fdf:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -136,7 +138,7 @@ void solve_g(
 		//dfdx.download(dfdx_h);
 		//savegmat(dfdx, outpath + "dfdxo.txt");
         //clock_gettime(CLOCK_MONOTONIC, &start);
-		computegdg(x, g, dgdx, volfrac, m, nel);
+		computegdg(/*x, g, dgdx,*/ volfrac, m, nel);
         //clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"gdg:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 		//g.download(g_h);

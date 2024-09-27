@@ -5,6 +5,10 @@
 //gpumat<double> F;
 extern float my_erfinvf(float a);
 
+extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef, xold1g, xold2g, lowg, uppg;
+extern gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
+
+
 template<typename scalar>
 void printgmat(const gpumat<scalar>& v)
 {
@@ -30,7 +34,7 @@ __global__ void gatherK_kernel(int* ik, int* jk, double* sk, int* freeidx, doubl
 		atomicAdd(&K[ik[i] + nfreedofs * jk[i]], sk[freeidx[i]]);
 }
 
-void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F_h, gpumat<double>& U)
+void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F_h/*, gpumat<double>& U*/)
 {
 	static std::vector<Eigen::Triplet<double>> triplist(freeidx.size());
 
@@ -61,7 +65,7 @@ void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vect
 	U.set_by_index(idx.data(), freedofs.size(), uuu.data());
 }
 
-void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, gpumat<int>& freedofs, gpumat<double>& F, gpumat<double>& U)
+void solvefem_g(/*gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gpumat<int>& freeidx, gpumat<int>& freedofs, gpumat<double>& F, gpumat<double>& U*/)
 {
 	static gpumat<double> K(freedofs.size(), freedofs.size());
 	static gpumat<double> b(freedofs.size(), 1);
@@ -118,7 +122,7 @@ void solvefem_g(gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, gp
 	U.set_by_index(freedofs.data(), freedofs.size(), b.data());
 }
 
-void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, double& f, gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, int ndofs, bool multiobj, gpumat<double>& F)
+void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, */double& f,/* gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, */int ndofs, bool multiobj/*, gpumat<double>& F*/)
 {
 	//static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
 	//double* U_h = new double[U.size()];
@@ -165,7 +169,7 @@ void computefdf(gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, 
 	f -= 200 / std::sqrt(3) / PI / nel * sum;
 }
 
-void computegdg(gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, const double& volfrac, const int m, const int nel)
+void computegdg(/*gpumat<double>& x, gpumat<double>& g, gpumat<double>& dgdx, */const double& volfrac, const int m, const int nel)
 {
 	static double theta_min = PI / 18;
 	double ttt = x.sum_partly(0, nel) / nel / volfrac - 1;
