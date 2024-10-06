@@ -13,9 +13,9 @@
 
 int main(int argc, char* argv[])
 {
-	int nelx = 6;
-	int nely = 3;
-	int nelz = 3;
+	int nelx = 24;
+	int nely = 12;
+	int nelz = 12;
 	double volfrac = 0.4;
 	Femproblem fem(nelx, nely, nelz, volfrac, 1);
 
@@ -24,10 +24,10 @@ int main(int argc, char* argv[])
 		cons[i] = i;
 	fem.setconstrain(move(cons));
 	Eigen::VectorXd force = Eigen::VectorXd::Constant(fem.ndof, 0);
-	 for (int i = 0; i <= nely; ++i)
-	 {
-	 	force[(nelx * (nely + 1) * (nelz + 1) + i) * 3 + 2] = -1;
-	 }
+	for (int i = 0; i <= nely; ++i)
+	{
+		force[(nelx * (nely + 1) * (nelz + 1) + i) * 3 + 2] = -1;
+	}
 	//force[nelx * (nely + 1) * (nelz + 1) + static_cast<int>(nelz / 2) * (nely + 1) + static_cast<int>(nely / 2)] = -1;
 	fem.setforce(force);
 

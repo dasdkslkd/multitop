@@ -247,14 +247,27 @@ public:
 	gpumat& resize(size_t row, size_t col)
 	{
 		size_t newsize = row * col;
-		if (_size != newsize)
-		{
-			clear();
-			_size = newsize;
-			_row = row;
-			_col = col;
+		//if (_size != newsize)
+		//{
+		//	clear();
+		//	_size = newsize;
+		//	_row = row;
+		//	_col = col;
+		//	cudaMalloc(&_data, newsize * sizeof(scalar));
+		//}
+		if(_data==nullptr)
 			cudaMalloc(&_data, newsize * sizeof(scalar));
+		else if (_size != newsize)
+		{
+			scalar* newdata = nullptr;
+			cudaMalloc(&newdata, newsize * sizeof(scalar));
+			cudaMemcpy(newdata, _data, std::min(_size, newsize) * sizeof(scalar), cudaMemcpyDeviceToDevice);
+			cudaFree(_data);
+			_data = newdata;
 		}
+		_size = newsize;
+		_row = row;
+		_col = col;
 		cuda_error_check;
 		return *this;
 	}

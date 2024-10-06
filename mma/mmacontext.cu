@@ -120,6 +120,7 @@ void solve_g(
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
         solvefem_g(/*ikfree, jkfree, sk, freeidx, freedofs, F, U*/);
+		solvefemsp_g();
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefemg:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -203,8 +204,8 @@ void solve_g(
 			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
 		}
 
-		//if (iter == 2)
-		//	break;
+		if (iter == 3)
+			break;
 	}
 	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x0.txt", x_h, n);

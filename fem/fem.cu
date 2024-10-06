@@ -1,6 +1,8 @@
 #include "fem.cuh"
 #include"../IO/matrixIO.h"
 #include "cusolverDn.h"
+#include "cusolverSp.h"
+#include "cusparse_v2.h"
 #include <utility>
 //gpumat<double> F;
 extern float my_erfinvf(float a);
@@ -8,6 +10,8 @@ extern float my_erfinvf(float a);
 extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef, xold1g, xold2g, lowg, uppg;
 extern gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 
+gpumat<int> idxmap, ikf_squeez, jkf_squeez, permutation;
+gpumat<double> skf_squeez, skf_sorted;
 
 template<typename scalar>
 void printgmat(const gpumat<scalar>& v)
@@ -32,6 +36,85 @@ __global__ void gatherK_kernel(int* ik, int* jk, double* sk, int* freeidx, doubl
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < n && sk[freeidx[i]] != 0)
 		atomicAdd(&K[ik[i] + nfreedofs * jk[i]], sk[freeidx[i]]);
+}
+
+__global__ void gatherKsp_kernel(double* sk, int* freeidx, double* skf, int* map, int n)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < n)
+		atomicAdd(&skf[map[i]], sk[freeidx[i]]);
+}
+
+__global__ void permute_kernel(double* skf_sort, double* skf_sqz, int* permut, int n)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < n)
+		skf_sort[i] = skf_sqz[permut[i]];
+}
+
+inline void hash_squeeze()
+{
+	vector<int> hashtable(freedofs.size() * freedofs.size(), -1);
+	//idxmap.resize(ikfree.size(), 1);
+	//ikf_squeez.resize(ikfree.size(), 1);
+	//jkf_squeez.resize(jkfree.size(), 1);
+	int* ikfree_h = new int[ikfree.size()];
+	int* jkfree_h = new int[jkfree.size()];
+	int* idxmap_h = new int[ikfree.size()];
+	int* ikf_sqz_h = new int[ikfree.size()];
+	int* jkf_sqz_h = new int[jkfree.size()];
+	ikfree.download(ikfree_h);
+	jkfree.download(jkfree_h);
+	int n = freedofs.size();
+	int count = 0;
+	for (int i = 0; i < ikfree.size(); ++i)
+	{
+		int idx = ikfree_h[i] + n * jkfree_h[i];
+		if (hashtable[idx] == -1)
+		{
+			hashtable[idx] = count;
+			ikf_sqz_h[count] = ikfree_h[i];
+			jkf_sqz_h[count] = jkfree_h[i];
+			//ikf_squeez.set_by_index(count, 1, ikfree.data() + i, cudaMemcpyDeviceToDevice);
+			//jkf_squeez.set_by_index(count, 1, jkfree.data() + i, cudaMemcpyDeviceToDevice);
+			++count;
+		}
+		//idxmap.set_by_index(i, 1, &hashtable[idx], cudaMemcpyHostToDevice);
+		idxmap_h[i] = hashtable[idx];
+	}
+	//ikf_squeez.resize(count, 1);
+	//jkf_squeez.resize(count, 1);
+	//skf_squeez.resize(count, 1);
+	ikf_squeez.set_from_host(ikf_sqz_h, count, 1);
+	jkf_squeez.set_from_host(jkf_sqz_h, count, 1);
+	idxmap.set_from_host(idxmap_h, ikfree.size(), 1);
+	skf_squeez.resize(count, 1);
+	delete[] ikfree_h, jkfree_h, ikf_sqz_h, jkf_sqz_h, idxmap_h;
+}
+
+inline void sortcoo()
+{
+	void* d_buffer = nullptr;
+	int nnz = ikf_squeez.size();
+	skf_sorted = gpumat<double>(nnz, 1);
+	permutation = gpumat<int>(nnz, 1);
+	size_t bufferSize = 0;
+	cusparseHandle_t handle = NULL;
+	cusparseSpVecDescr_t vec_permutation;
+	cusparseDnVecDescr_t vec_values;
+	cusparseCreate(&handle);
+	cusparseCreateSpVec(&vec_permutation, nnz, nnz, permutation.data(), skf_sorted.data(), CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
+	cusparseCreateDnVec(&vec_values, nnz, skf_squeez.data(), CUDA_R_64F);
+	cusparseXcoosort_bufferSizeExt(handle, freedofs.size(), freedofs.size(), nnz, ikf_squeez.data(), jkf_squeez.data(), &bufferSize);
+	cudaMalloc(&d_buffer, bufferSize);
+	cusparseCreateIdentityPermutation(handle, nnz, permutation.data());
+	cusparseXcoosortByRow(handle, freedofs.size(), freedofs.size(), nnz, ikf_squeez.data(), jkf_squeez.data(), permutation.data(), d_buffer);
+	cusparseGather(handle, vec_values, vec_permutation);
+	cusparseDestroySpVec(vec_permutation);
+	cusparseDestroyDnVec(vec_values);
+	cudaFree(d_buffer);
+	cusparseDestroy(handle);
+	cuda_error_check;
 }
 
 void solvefem(vector<int>& ikfree, vector<int>& jkfree, vector<double>& sk, vector<int>& freeidx, vector<int>& freedofs, Eigen::VectorXd& F_h/*, gpumat<double>& U*/)
@@ -74,13 +157,12 @@ void solvefem_g(/*gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, 
 	b = F(freedofs);
 	K.set_from_value(0);
 
-	dim3 grid = 0, block = 0;
-	auto pair = kernel_param(freeidx.size());
-	grid = pair.first;
-	block = pair.second;
+	auto [grid,block] = kernel_param(freeidx.size());
 	gatherK_kernel << <grid, block >> > (ikfree.data(), jkfree.data(), sk.data(), freeidx.data(), K.data(), freedofs.size(), freeidx.size());
 	cudaDeviceSynchronize();
 	cuda_error_check;
+
+	//savegmat(K, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Kg.txt");
 
 	cusolverDnHandle_t handle = NULL;
 	cusolverDnParams_t param;
@@ -120,6 +202,103 @@ void solvefem_g(/*gpumat<int>& ikfree, gpumat<int>& jkfree, gpumat<double>& sk, 
 	cusolverDnDestroy(handle);
 
 	U.set_by_index(freedofs.data(), freedofs.size(), b.data());
+	//savegmat(U, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Ug.txt");
+}
+
+void solvefemsp_g()
+{
+	static gpumat<double> b(freedofs.size(), 1);
+	b = F(freedofs);
+	static bool dummy2 = (hash_squeeze(), 0);
+	auto [grid, block] = kernel_param(freeidx.size());
+	skf_squeez.set_from_value(0);
+	gatherKsp_kernel << <grid, block >> > (sk.data(), freeidx.data(), skf_squeez.data(), idxmap.data(), freeidx.size());
+	cudaDeviceSynchronize();
+	cuda_error_check;
+
+	////sort coo format, assume all elements in skf_squeez are nonzero
+	//int* d_permutation = nullptr;
+	//void* d_buffer = nullptr;
+	////double* sorted_skf = nullptr;
+	//int nnz = ikf_squeez.size();
+	//gpumat<double> sorted_skf(nnz, 1);
+	//size_t bufferSize = 0;
+	//cudaMalloc((void**)&d_permutation, nnz * sizeof(int));
+	////cudaMalloc((void**)&sorted_skf, nnz * sizeof(double));
+	//cusparseHandle_t handle = NULL;
+	//cusparseSpVecDescr_t vec_permutation;
+	//cusparseDnVecDescr_t vec_values;
+	//cusparseCreate(&handle);
+	//cusparseCreateSpVec(&vec_permutation, nnz, nnz, d_permutation, sorted_skf.data(), CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
+	//cusparseCreateDnVec(&vec_values, nnz, skf_squeez.data(), CUDA_R_64F);
+	////m,n are not used
+	//cusparseXcoosort_bufferSizeExt(handle, freedofs.size(), freedofs.size(), nnz, ikf_squeez.data(), jkf_squeez.data(), &bufferSize);
+	//cudaMalloc(&d_buffer, bufferSize);
+	//cusparseCreateIdentityPermutation(handle, nnz, d_permutation);
+	//cusparseXcoosortByRow(handle, freedofs.size(), freedofs.size(), nnz, ikf_squeez.data(), jkf_squeez.data(), d_permutation, d_buffer);
+	//cusparseGather(handle, vec_values, vec_permutation);
+	//
+	//int* h_per = new int[nnz];
+	//cudaMemcpy(h_per, d_permutation, nnz * sizeof(int), cudaMemcpyDeviceToHost);
+	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\permutation.txt", h_per, nnz);
+
+	//cusparseDestroySpVec(vec_permutation);
+	//cusparseDestroyDnVec(vec_values);
+	//cudaFree(d_permutation);
+	//cudaFree(d_buffer);
+
+	static bool dummy3 = (sortcoo(), 0);
+	//for (int i = 0; i < ikf_squeez.size(); ++i)
+	//{
+	//	skf_sorted.set_by_index(i, 1, skf_squeez.data() + permutation.get_item(i), cudaMemcpyDeviceToDevice);
+	//}
+	auto [grid2, block2] = kernel_param(ikf_squeez.size());
+	permute_kernel << <grid2, block2 >> > (skf_sorted.data(), skf_squeez.data(), permutation.data(), ikf_squeez.size());
+
+
+	gpumat<double> K(freedofs.size(), freedofs.size());
+	//K.set_from_value(0);
+	//for (int i = 0; i < ikf_squeez.size(); ++i)
+	//	K.set_by_index(ikf_squeez.get_item(i) + freedofs.size() * jkf_squeez.get_item(i), 1, skf_sorted.data() + i, cudaMemcpyDeviceToDevice);
+	//savegmat(K, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Kspg1.txt");
+	//savegmat(sorted_skf, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\sorted_skf1.txt");
+	//savegmat(ikf_squeez, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\ikf_squeez1.txt");
+	//savegmat(jkf_squeez, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\jkf_squeez1.txt");
+	
+	
+
+	//coo2csr
+	//int* csrRowPtr;
+	cusparseHandle_t handle = NULL;
+	cusparseCreate(&handle);
+	gpumat<int> csrRowPtr(freedofs.size() + 1, 1);
+	//cudaMalloc(&csrRowPtr, (freedofs.size() + 1) * sizeof(int));
+	cusparseXcoo2csr(handle, ikf_squeez.data(), ikf_squeez.size(), freedofs.size(), csrRowPtr.data(), CUSPARSE_INDEX_BASE_ZERO);
+	cusparseDestroy(handle);
+
+	//for (int i = 0; i < ikf_squeez.size(); ++i)
+	//	K.set_by_index(ikf_squeez.get_item(i) + freedofs.size() * jkf_squeez.get_item(i), 1, skf_sorted.data() + i, cudaMemcpyDeviceToDevice);
+	//savegmat(K, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Kspg2.txt");
+	//savegmat(skf_sorted, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\sorted_skf2.txt");
+	//savegmat(ikf_squeez, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\ikf_squeez2.txt");
+	//savegmat(jkf_squeez, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\jkf_squeez2.txt");
+	
+	//solve
+	int* singularity = (int*)malloc(sizeof(int));
+	gpumat<double> x(freedofs.size(), 1);
+	cusolverSpHandle_t handle2 = NULL;
+	cusparseMatDescr_t descrA = NULL;
+	cusolverSpCreate(&handle2);
+	cusparseCreateMatDescr(&descrA);
+	//cusolverSpDcsrlsvchol(handle2, freedofs.size(), nnz, descrA, skf_squeez.data(), csrRowPtr, jkf_squeez.data(), b.data(), 1e-6, 0, x.data(), singularity);
+	cusolverSpDcsrlsvqr(handle2, freedofs.size(), ikf_squeez.size(), descrA, skf_sorted.data(), csrRowPtr.data(), jkf_squeez.data(), b.data(), 1e-6, 0, x.data(), singularity);
+	cout << *singularity << endl;
+	free(singularity);
+	cusolverSpDestroy(handle2);
+	cusparseDestroyMatDescr(descrA);
+	U.set_by_index(freedofs.data(), freedofs.size(), x.data());
+	//savegmat(U, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\Uspg.txt");
+	cuda_error_check;
 }
 
 void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, */double& f,/* gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, */int ndofs, bool multiobj/*, gpumat<double>& F*/)
