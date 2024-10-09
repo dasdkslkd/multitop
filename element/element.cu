@@ -16,6 +16,8 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 	if (!x_host)
 		x_host = (double*)malloc(4 * nel * sizeof(double));
 	x.download(x_host);
+	static vector<double> S_h(9 * nel);
+	static vector<double> dSdx_h(36 * nel);
 #pragma omp parallel for
 	for (int i = 0; i < nel; ++i)
 	{
@@ -25,7 +27,8 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 		//std::cout << input << '\n';
 		//std::cout << output << '\n';
 		auto data = output.data_ptr<double>();
-		S.set_by_index(9 * i, 9, data, cudaMemcpyHostToDevice);
+		std::copy(data, data + 9, S_h.data() + 9 * i);
+		//S.set_by_index(9 * i, 9, data, cudaMemcpyHostToDevice);
 		for (int j = 0; j < 9; ++j)
 		{
 			auto xx = input.clone();
@@ -36,15 +39,23 @@ void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module
 			y.backward(t);
 			static double ttt;
 			ttt = xx.grad()[0].item().toDouble();
-			dSdx.set_by_index(36 * i + j, 1, &ttt, cudaMemcpyHostToDevice);
+			//dSdx.set_by_index(36 * i + j, 1, &ttt, cudaMemcpyHostToDevice);
+			dSdx_h[36 * i + j] = ttt;
 			ttt = xx.grad()[1].item().toDouble();
-			dSdx.set_by_index(36 * i + j + 9, 1, &ttt, cudaMemcpyHostToDevice);
+			//dSdx.set_by_index(36 * i + j + 9, 1, &ttt, cudaMemcpyHostToDevice);
+			dSdx_h[36 * i + j + 9] = ttt;
 			ttt = xx.grad()[2].item().toDouble();
-			dSdx.set_by_index(36 * i + j + 18, 1, &ttt, cudaMemcpyHostToDevice);
+			//dSdx.set_by_index(36 * i + j + 18, 1, &ttt, cudaMemcpyHostToDevice);
+			dSdx_h[36 * i + j + 18] = ttt;
 			ttt = xx.grad()[3].item().toDouble();
-			dSdx.set_by_index(36 * i + j + 27, 1, &ttt, cudaMemcpyHostToDevice);
+			//dSdx.set_by_index(36 * i + j + 27, 1, &ttt, cudaMemcpyHostToDevice);
+			dSdx_h[36 * i + j + 27] = ttt;
 		}
 	}
+	//S.set_from_value(0.);
+	S.set_by_index(0, 9 * nel, S_h.data(), cudaMemcpyHostToDevice);
+	//dSdx.set_from_value(0.);
+	dSdx.set_by_index(0, 36 * nel, dSdx_h.data(), cudaMemcpyHostToDevice);
 }
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)

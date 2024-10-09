@@ -13,9 +13,9 @@
 
 int main(int argc, char* argv[])
 {
-	int nelx = 24;
-	int nely = 12;
-	int nelz = 12;
+	int nelx = 6;
+	int nely = 3;
+	int nelz = 3;
 	double volfrac = 0.4;
 	Femproblem fem(nelx, nely, nelz, volfrac, 1);
 
