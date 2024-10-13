@@ -7,7 +7,7 @@
 #include "time.h"
 #endif
 
-gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef, xold1g, xold2g, lowg, uppg;
+gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef2, xold1g, xold2g, lowg, uppg;
 gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 
 template<typename T>
@@ -66,12 +66,12 @@ void solve_g(
 	xmax.set_from_host(xmax_h, n, 1);
 	F.set_from_host(F_h.data(), F_h.size(), 1);
 	S.set_from_host(S_h, 9, nel);
-	dSdx.set_from_host(dSdx_h, 36 * nel, 1);
+	dSdx.set_from_host(dSdx_h, 9, 4 * nel);
 	sk.set_from_host(sk_h.data(), 576 * nel, 1);
 	dskdx.set_from_host(dskdx_h.data(), 576 * nel, 1);
 	U.set_from_host(U_h.data(), ndof, 1);
 	temp.set_from_host(temp_h, 9, nel);
-	coef.set_from_host(coef_h.data(), 576, 9);
+	coef2.set_from_host(coef_h.data(), 576, 9);
 	freedofs.set_from_host(freedofs_h.data(), freedofs_h.size(), 1);
 	freeidx.set_from_host(freeidx_h.data(), freeidx_h.size(), 1);
 	ik.set_from_host(ik_h.data(), ik_h.size(), 1);
@@ -101,7 +101,7 @@ void solve_g(
         cout<<"predict:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
         //clock_gettime(CLOCK_MONOTONIC, &start);
-		elastisity(S, coef, sk);
+		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
         
@@ -131,7 +131,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		computefdf(/*U, dSdx, dskdx, ik, jk, */f/*, dfdx, x, coef*/, ndof, multiobj/*, F*/);
+		computefdf(/*U, dSdx, dskdx, ik, jk, */f/*, dfdx, x, coef2*/, ndof, multiobj/*, F*/);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"fdf:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -204,8 +204,8 @@ void solve_g(
 			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
 		}
 
-		if (iter == 3)
-			break;
+		//if (iter == 3)
+		//	break;
 	}
 	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x0.txt", x_h, n);

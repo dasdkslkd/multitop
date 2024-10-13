@@ -7,7 +7,7 @@
 //gpumat<double> F;
 extern float my_erfinvf(float a);
 
-extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef, xold1g, xold2g, lowg, uppg;
+extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef2, xold1g, xold2g, lowg, uppg;
 extern gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 
 gpumat<int> idxmap, ikf_squeez, jkf_squeez, permutation;
@@ -50,6 +50,19 @@ __global__ void permute_kernel(double* skf_sort, double* skf_sqz, int* permut, i
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < n)
 		skf_sort[i] = skf_sqz[permut[i]];
+}
+
+__global__ void caldfdx_kernel(double* U, int* iknz, int* jknz, double* dskdxnz, double* dfdx, int nnz, int n, int nel)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	//dfdx[i] = 0;
+	int q = i / nel;
+	int r = i - q * nel;
+	if (i < n && j < nnz)
+	{
+		atomicAdd(&dfdx[i], -U[iknz[i * nnz + j]] * U[jknz[i * nnz + j]] * dskdxnz[(4 * r + q) * nnz + j]);
+	}
 }
 
 inline void hash_squeeze()
@@ -301,7 +314,7 @@ void solvefemsp_g()
 	cuda_error_check;
 }
 
-void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, */double& f,/* gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef, */int ndofs, bool multiobj/*, gpumat<double>& F*/)
+void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx, gpumat<int>& ik, gpumat<int>& jk, */double& f,/* gpumat<double>& dfdx, gpumat<double>& x, gpumat<double>& coef2, */int ndofs, bool multiobj/*, gpumat<double>& F*/)
 {
 	//static bool dummy = (F.set_from_host(F_host.data(), F_host.size(), 1), true);
 	//double* U_h = new double[U.size()];
@@ -312,39 +325,62 @@ void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx
 	f = matprod(U.transpose(), F).get_item(0);
 	double sum = 0;
 	int nel = static_cast<int>(dfdx.size() / 4);
-	static std::vector<int32_t> idx(coef.rows());
-	static gpumat<int> iknz(coef.rows(), 1), jknz(coef.rows(), 1);
-	static gmatd dskdxnz(coef.rows(), 1);
-	for (int i = 0; i < 4 * nel; ++i)
-	{
-		sensitivity(dSdx, coef, dskdx, idx, i, nel);
-		iknz.set_by_index(0, coef.rows(), ik.data() + idx[0], cudaMemcpyDeviceToDevice);
-		jknz.set_by_index(0, coef.rows(), jk.data() + idx[0], cudaMemcpyDeviceToDevice);
-		dskdxnz.set_by_index(0, coef.rows(), dskdx.data() + idx[0], cudaMemcpyDeviceToDevice);
-		dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, iknz, jknz, dskdxnz, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
-		//cout << dfdx.get_item(i) << ' ';
-		//dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
-		//cout << dfdx.get_item(i) << endl;
-		//if (i == 0)
-		//{
-		//	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
-		//	savegmat(ik, outpath + "ikg.txt");
-		//	savegmat(jk, outpath + "jkg.txt");
-		//	savegmat(ik(idx), outpath + "iknz.txt");
-		//	savegmat(jk(idx), outpath + "jknz.txt");
-		//	savegmat(dskdx, outpath + "dskdxg.txt");
-		//	savegmat(dskdx(idx), outpath + "dskdxnz.txt");
-		//	savevec(outpath + "idx.txt", idx);
-		//	//savegmat(U, outpath + "Ug.txt");
-		//}
+	static std::vector<int32_t> idx(coef2.rows());
+	static gpumat<int> iknz(coef2.rows(), dfdx.size()), jknz(coef2.rows(), dfdx.size());
+	static gmatd dskdxnz(coef2.rows(), dfdx.size());
+	//static gpumat<int> iknz2(coef2.rows(), 1), jknz2(coef2.rows(), 1);
+	//static gmatd dskdxnz2(coef2.rows(), 1);
 
-		if (multiobj && i < nel && x.get_item(i)>1e-3)
-		{
-			sum += std::exp(-std::pow(my_erfinvf(2 * x.get_item(i) - 1), 2));
-			double ttt = dfdx.get_item(i) + 400 / std::sqrt(3. * PI) / nel * my_erfinvf(2 * x.get_item(i) - 1);
-			dfdx.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
-		}
-	}
+	static gmatd dskdx_all(coef2.rows(), dfdx.size());
+	dskdx_all = matprod(coef2, dSdx);
+	iknz.set_by_index(0, ik.size(), ik.data(), cudaMemcpyDeviceToDevice);
+	iknz.set_by_index(ik.size(), ik.size(), ik.data(), cudaMemcpyDeviceToDevice);
+	iknz.set_by_index(2 * ik.size(), ik.size(), ik.data(), cudaMemcpyDeviceToDevice);
+	iknz.set_by_index(3 * ik.size(), ik.size(), ik.data(), cudaMemcpyDeviceToDevice);
+	jknz.set_by_index(0, jk.size(), jk.data(), cudaMemcpyDeviceToDevice);
+	jknz.set_by_index(jk.size(), jk.size(), jk.data(), cudaMemcpyDeviceToDevice);
+	jknz.set_by_index(2 * jk.size(), jk.size(), jk.data(), cudaMemcpyDeviceToDevice);
+	jknz.set_by_index(3 * jk.size(), jk.size(), jk.data(), cudaMemcpyDeviceToDevice);
+	dim3 block(32, 32, 1);
+	dim3 grid((dfdx.size() + block.x - 1) / block.x, (coef2.rows() + block.y - 1) / block.y);
+	dfdx.set_from_value(0);
+	caldfdx_kernel << <grid, block >> > (U.data(), iknz.data(), jknz.data(), dskdx_all.data(), dfdx.data(), coef2.rows(), dfdx.size(), nel);
+	cudaDeviceSynchronize();
+	cuda_error_check;
+
+	//savegmat(dfdx, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dfdx1.txt");
+
+	//for (int i = 0; i < 4 * nel; ++i)
+	//{
+	//	sensitivity(dSdx, coef2, dskdx, idx, i, nel);
+	//	iknz2.set_by_index(0, coef2.rows(), ik.data() + idx[0], cudaMemcpyDeviceToDevice);
+	//	jknz2.set_by_index(0, coef2.rows(), jk.data() + idx[0], cudaMemcpyDeviceToDevice);
+	//	dskdxnz2.set_by_index(0, coef2.rows(), dskdx.data() + idx[0], cudaMemcpyDeviceToDevice);
+	//	dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, iknz2, jknz2, dskdxnz2, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
+	//	//cout << dfdx.get_item(i) << ' ';
+	//	//dfdx.set_by_index(i, 1, matprod(U.transpose() * (-1.), spmatprodcoo(U, ik, jk, dskdx, ndofs, ndofs)).data(), cudaMemcpyDeviceToDevice);
+	//	//cout << dfdx.get_item(i) << endl;
+	//	//if (i == 0)
+	//	//{
+	//	//	string outpath = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\";
+	//	//	savegmat(ik, outpath + "ikg.txt");
+	//	//	savegmat(jk, outpath + "jkg.txt");
+	//	//	savegmat(ik(idx), outpath + "iknz.txt");
+	//	//	savegmat(jk(idx), outpath + "jknz.txt");
+	//	//	savegmat(dskdx, outpath + "dskdxg.txt");
+	//	//	savegmat(dskdx(idx), outpath + "dskdxnz.txt");
+	//	//	savevec(outpath + "idx.txt", idx);
+	//	//	//savegmat(U, outpath + "Ug.txt");
+	//	//}
+
+	//	if (multiobj && i < nel && x.get_item(i)>1e-3)
+	//	{
+	//		sum += std::exp(-std::pow(my_erfinvf(2 * x.get_item(i) - 1), 2));
+	//		double ttt = dfdx.get_item(i) + 400 / std::sqrt(3. * PI) / nel * my_erfinvf(2 * x.get_item(i) - 1);
+	//		dfdx.set_by_index(i, 1, &ttt, cudaMemcpyHostToDevice);
+	//	}
+	//}
+	//savegmat(dfdx, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dfdx2.txt");
 	f -= 200 / std::sqrt(3) / PI / nel * sum;
 }
 

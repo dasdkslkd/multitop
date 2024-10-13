@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 	int nely = 3;
 	int nelz = 3;
 	double volfrac = 0.4;
-	Femproblem fem(nelx, nely, nelz, volfrac, 1);
+	Femproblem fem(nelx, nely, nelz, volfrac, 0);
 
 	vector<int> cons(3 * (nely + 1) * (nelz + 1));
 	for (int i = 0; i < cons.size(); ++i)
