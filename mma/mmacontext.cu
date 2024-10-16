@@ -7,7 +7,7 @@
 #include "time.h"
 #endif
 
-gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef2, xold1g, xold2g, lowg, uppg;
+gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, coef2, xold1g, xold2g, lowg, uppg;
 gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 
 template<typename T>
@@ -38,25 +38,8 @@ void solve_g(
 	int maxiter = 300;
 	vector<double> flist(maxiter, 0);
 	double f = 1e9;
-	double* xold1 = new double[n];
-	double* xold2 = new double[n];
-	double* low = new double[n];
-	double* upp = new double[n];
-	double* a = new double[m];
-	double* c = new double[m];
-	double* d = new double[m];
-	for (int i = 0; i < m; ++i)
-	{
-		a[i] = 0;
-		c[i] = 1000;
-		d[i] = 0;
-	}
-
 	int nel = nelx * nely * nelz;
 	int ndof = 3 * (nelx + 1) * (nely + 1) * (nelz + 1);
-
-
-	
 
 	x.set_from_host(x_h, n, 1);
 	dfdx.set_from_host(dfdx_h, n, 1);
@@ -70,7 +53,7 @@ void solve_g(
 	sk.set_from_host(sk_h.data(), 576 * nel, 1);
 	dskdx.set_from_host(dskdx_h.data(), 576 * nel, 1);
 	U.set_from_host(U_h.data(), ndof, 1);
-	temp.set_from_host(temp_h, 9, nel);
+	//temp.set_from_host(temp_h, 9, nel);
 	coef2.set_from_host(coef_h.data(), 576, 9);
 	freedofs.set_from_host(freedofs_h.data(), freedofs_h.size(), 1);
 	freeidx.set_from_host(freeidx_h.data(), freeidx_h.size(), 1);
@@ -78,11 +61,10 @@ void solve_g(
 	jk.set_from_host(jk_h.data(), jk_h.size(), 1);
 	ikfree.set_from_host(ikfree_h.data(), ikfree_h.size(), 1);
 	jkfree.set_from_host(jkfree_h.data(), jkfree_h.size(), 1);
-
-    xold1g.set_from_host(xold1,n,1);
-    xold2g.set_from_host(xold2,n,1);
-    lowg.set_from_host(low,n,1);
-    uppg.set_from_host(upp,n,1);
+	xold1g.resize(n, 1);
+	xold2g.resize(n, 1);
+	lowg.resize(n, 1);
+	uppg.resize(n, 1);
 
 	while (change > 0.01 && iter < maxiter && iter < miniter + 50)
 	{
@@ -114,8 +96,8 @@ void solve_g(
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefem:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
-        savevec(outpath+"skh.txt",sk_h);
-        savegmat(U,outpath+"uh.txt");
+        //savevec(outpath+"skh.txt",sk_h);
+        //savegmat(U,outpath+"uh.txt");
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
@@ -126,8 +108,8 @@ void solve_g(
         cout<<"solvefemg:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
 
-        savegmat(sk,outpath+"skg.txt");
-        savegmat(U,outpath+"ug.txt");
+        //savegmat(sk,outpath+"skg.txt");
+        //savegmat(U,outpath+"ug.txt");
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
@@ -204,10 +186,9 @@ void solve_g(
 			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
 		}
 
-		//if (iter == 3)
-		//	break;
+		if (iter == 3)
+			break;
 	}
-	delete[] xold1, xold2, low, upp, a, c, d;
 	savearr(outpath + "x0.txt", x_h, n);
     savegmat(x, outpath + "xfinal.txt");
 	savevec(outpath + "obj.txt", flist);
