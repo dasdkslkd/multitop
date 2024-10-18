@@ -133,6 +133,8 @@ void solve_g(
 #endif
         //clock_gettime(CLOCK_MONOTONIC, &start);
 		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), 2.5, nelx, nely, nelz, n, nel);
+		cudaDeviceSynchronize();
+		cuda_error_check;
 		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
