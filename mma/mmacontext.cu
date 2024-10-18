@@ -9,6 +9,7 @@
 
 gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, coef2, xold1g, xold2g, lowg, uppg;
 gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
+gpumat<double> H;
 
 template<typename T>
 void savegmat(gpumat<T>& v, string filename)
@@ -20,6 +21,48 @@ void savegmat(gpumat<T>& v, string filename)
 
 using gmatd=gpumat<double>;
 extern void mmasub(const int m, const int n, int iter, gmatd& x, const gmatd& xmin, const gmatd& xmax, gmatd& xold1, gmatd& xold2, const gmatd& dfdx, const gmatd& g, const gmatd& dgdx, gmatd& low, gmatd& upp, const double a0, gmatd& a, const gmatd& c, const gmatd& d, const double move);
+
+__global__ void build_sensitivity_filter_kernel(double* H, double r, int nelx, int nely, int nelz, int n)
+{
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid < n)
+	{
+		int j = tid % nely;
+		int k = (tid / nely) % nelz;
+		int i = tid / (nely * nelz);
+		double sum = 0.;
+		for (int l = max(0., i - r); l < min(1.*nelx, i + r); ++l)
+			for (int m = max(0., j - r); m < min(1.*nely, j + r); ++m)
+				for (int o = max(0., k - r); o < min(1.*nelz, k + r); ++o)
+					sum += max(0., r - sqrt(static_cast<double>((i - l) ^ 2 + (j - m) ^ 2 + (k - o) ^ 2)));
+		H[tid] = sum;
+	}
+}
+
+__global__ void sensitivity_filter_kernel(double* x, double* H, double* dSdx, double r, int nelx, int nely, int nelz, int n, int nel)
+{
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid < n)
+	{
+		int q = tid / nel;
+		int eid = tid % nel;
+		int j = eid % nely;
+		int k = (eid / nely) % nelz;
+		int i = eid / (nely * nelz);
+		double tmp = 0.;
+		double sum[9] = { 0. };
+		for (int l = max(0., i - r); l < min(1. * nelx, i + r); ++l)
+			for (int m = max(0., j - r); m < min(1. * nely, j + r); ++m)
+				for (int o = max(0., k - r); o < min(1. * nelz, k + r); ++o)
+				{
+					tmp = max(0., r - sqrt(static_cast<double>((i - l) ^ 2 + (j - m) ^ 2 + (k - o) ^ 2))) * x[tid];
+					for (int p = 0; p < 9; ++p)
+						sum[p] += tmp * dSdx[36 * eid + 9 * q + p];
+				}
+		for (int p = 0; p < 9; ++p)
+			dSdx[36 * eid + 9 * q + p] = sum[p] / H[tid] / x[tid];
+	}
+}
 
 extern "C"
 void solve_g(
@@ -66,6 +109,12 @@ void solve_g(
 	lowg.resize(n, 1);
 	uppg.resize(n, 1);
 
+	H.resize(n, 1);
+	auto [grid, block] = kernel_param(n);
+	build_sensitivity_filter_kernel << <grid, block >> > (H.data(), 2.5, nelx, nely, nelz, n);
+	cudaDeviceSynchronize();
+	cuda_error_check;
+
 	while (change > 0.01 && iter < maxiter && iter < miniter + 50)
 	{
 #ifdef __linux__
@@ -83,6 +132,7 @@ void solve_g(
         cout<<"predict:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
         //clock_gettime(CLOCK_MONOTONIC, &start);
+		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), 2.5, nelx, nely, nelz, n, nel);
 		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;

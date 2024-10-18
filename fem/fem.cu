@@ -58,7 +58,7 @@ __global__ void caldfdx_kernel(double* U, int* iknz, int* jknz, double* dskdxnz,
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 	//dfdx[i] = 0;
 	int q = i / nel;
-	int r = i - q * nel;
+	int r = i % nel;
 	if (i < n && j < nnz)
 	{
 		atomicAdd(&dfdx[i], -U[iknz[i * nnz + j]] * U[jknz[i * nnz + j]] * dskdxnz[(4 * r + q) * nnz + j]);
