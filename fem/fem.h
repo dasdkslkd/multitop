@@ -5,7 +5,7 @@
 #include<Eigen/SparseCore>
 #include<Eigen/IterativeLinearSolvers>
 #include<eigen3/unsupported/Eigen/KroneckerProduct>
-//#include<iostream>
+#include<iostream>
 //#include<algorithm>
 #include "element.h"
 //#define PI acos(-1.f)

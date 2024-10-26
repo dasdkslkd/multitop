@@ -1,6 +1,6 @@
 #include "../fem/fem.cuh"
 //#include "mmacontext.h"
-#include <torch/script.h>
+//#include <torch/script.h>
 #include "../mma-g/mmaOpt.h"
 #include "../IO/matrixIO.h"
 #ifdef __linux__
@@ -71,7 +71,7 @@ void solve_g(
 	//fem
 	int nelx, int nely, int nelz, double volfrac, bool multiobj, Eigen::VectorXd & F_h, vector<int>&freedofs_h, vector<int>&freeidx_h, double* S_h, double* dSdx_h, vector<int>&ik_h, vector<int>&jk_h, vector<int>&ikfree_h, vector<int>&jkfree_h, vector<double>&sk_h, vector<double>&dskdx_h, vector<double>&U_h,
 	//elem
-	double* temp_h, Eigen::MatrixXd& coef_h, torch::jit::Module model,string outpath)
+	double* temp_h, Eigen::MatrixXd& coef_h, /*torch::jit::Module model,*/string outpath)
 {
 	//printf("1");
 	double change = 1.;
@@ -126,7 +126,8 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		predict(x, S, dSdx, nel, model);
+		//predict(x, S, dSdx, nel, model);
+		predict_py(x, S, dSdx, nel);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"predict:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;

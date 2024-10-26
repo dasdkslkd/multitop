@@ -3,7 +3,7 @@
 //#include<iostream>
 #include<fstream>
 #include<Eigen/Core>
-#include<torch/script.h>
+//#include<torch/script.h>
 #include "matrixIO.h"
 #define PI acos(-1.)
 using namespace std;
@@ -78,15 +78,15 @@ inline void readcoef()
 class spinodal
 {
 public:
-	torch::jit::Module model;
+	//torch::jit::Module model;
 	int nel;
 	double* temp;
 
 	spinodal(int nel = 0) :nel(nel)
 	{
 		static bool dummy = (readcoef(), true);//逗号表达式，readcoef仅调用一次
-		torch::set_default_dtype(caffe2::TypeMeta::Make<double>());
-		model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\fNN_cpu_64.pt");
+		//torch::set_default_dtype(caffe2::TypeMeta::Make<double>());
+		//model = torch::jit::load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\fNN_cpu_64.pt");
 		temp = new double[9 * nel];
 		fill(temp, temp + 9 * nel, 0.f);
 	}
@@ -97,7 +97,7 @@ public:
 
 	spinodal& operator=(const spinodal& inst)
 	{
-		model = inst.model;
+		//model = inst.model;
 		nel = inst.nel;
 		delete[] temp;
 		temp = new double[9 * inst.nel];
