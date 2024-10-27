@@ -305,7 +305,11 @@ void solvefemsp_g()
 	cusparseCreateMatDescr(&descrA);
 	//cusolverSpDcsrlsvchol(handle2, freedofs.size(), nnz, descrA, skf_squeez.data(), csrRowPtr, jkf_squeez.data(), b.data(), 1e-6, 0, x.data(), singularity);
 	cusolverSpDcsrlsvqr(handle2, freedofs.size(), ikf_squeez.size(), descrA, skf_sorted.data(), csrRowPtr.data(), jkf_squeez.data(), b.data(), 1e-6, 0, x.data(), singularity);
-	cout << *singularity << endl;
+	if (*singularity != -1)
+		cout << *singularity << endl;
+	else
+		cout << "No singularity in solvefemsp_g" << endl;
+	//cout << *singularity << endl;
 	free(singularity);
 	cusolverSpDestroy(handle2);
 	cusparseDestroyMatDescr(descrA);
@@ -344,6 +348,14 @@ void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx
 	dim3 block(32, 32, 1);
 	dim3 grid((dfdx.size() + block.x - 1) / block.x, (coef2.rows() + block.y - 1) / block.y);
 	dfdx.set_from_value(0);
+
+	savegmat(U, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\U.txt");
+	savegmat(dSdx, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dSdx.txt");
+	savegmat(coef2, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\coef2.txt");
+	savegmat(iknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\iknz.txt");
+	savegmat(jknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\jknz.txt");
+	savegmat(dskdx_all, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dskdx_all.txt");
+
 	caldfdx_kernel << <grid, block >> > (U.data(), iknz.data(), jknz.data(), dskdx_all.data(), dfdx.data(), coef2.rows(), dfdx.size(), nel);
 	cudaDeviceSynchronize();
 	cuda_error_check;

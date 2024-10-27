@@ -52,10 +52,15 @@ def predict(input,row:int,col:int) -> torch.Tensor:
     print("calling predict")
     model=torch.jit.load("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\fNN_cpu_64.pt")
     model.eval()
-    x=torch.tensor(input,dtype=torch.float64,requires_grad=True)
+    x=torch.tensor(input,dtype=torch.float64)
     x=x.reshape((row,col))
+    # print(x)
+    x[:,0]=(x[:,0]-0.3)/0.4
+    x[:,1:]=x[:,1:]*2/torch.pi
+    x.requires_grad=True
+    # print(x)
     y=model(x)
-    J=batched_jacobian(y,x)
+    J=batched_jacobian(y,x,False)
     return y.detach().numpy().flatten(),J.detach().numpy().flatten()
 
 

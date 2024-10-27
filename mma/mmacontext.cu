@@ -22,14 +22,15 @@ void savegmat(gpumat<T>& v, string filename)
 using gmatd=gpumat<double>;
 extern void mmasub(const int m, const int n, int iter, gmatd& x, const gmatd& xmin, const gmatd& xmax, gmatd& xold1, gmatd& xold2, const gmatd& dfdx, const gmatd& g, const gmatd& dgdx, gmatd& low, gmatd& upp, const double a0, gmatd& a, const gmatd& c, const gmatd& d, const double move);
 
-__global__ void build_sensitivity_filter_kernel(double* H, double r, int nelx, int nely, int nelz, int n)
+__global__ void build_sensitivity_filter_kernel(double* H, double r, int nelx, int nely, int nelz, int n, int nel)
 {
 	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid < n)
 	{
-		int j = tid % nely;
-		int k = (tid / nely) % nelz;
-		int i = tid / (nely * nelz);
+		int eid = tid % nel;
+		int j = eid % nely;
+		int k = (eid / nely) % nelz;
+		int i = eid / (nely * nelz);
 		double sum = 0.;
 		for (int l = max(0., i - r); l < min(1.*nelx, i + r); ++l)
 			for (int m = max(0., j - r); m < min(1.*nely, j + r); ++m)
@@ -111,9 +112,10 @@ void solve_g(
 
 	H.resize(n, 1);
 	auto [grid, block] = kernel_param(n);
-	build_sensitivity_filter_kernel << <grid, block >> > (H.data(), 2.5, nelx, nely, nelz, n);
+	build_sensitivity_filter_kernel << <grid, block >> > (H.data(), 3.2, nelx, nely, nelz, n, nel);
 	cudaDeviceSynchronize();
 	cuda_error_check;
+	//savegmat(H, outpath + "H.txt");
 
 	while (change > 0.01 && iter < maxiter && iter < miniter + 50)
 	{
@@ -128,23 +130,27 @@ void solve_g(
 #endif
 		//predict(x, S, dSdx, nel, model);
 		predict_py(x, S, dSdx, nel);
+		//savegmat(S, outpath + "S_py.txt");
+		//savegmat(dSdx, outpath + "dSdx_py.txt");
+		//savegmat(x, outpath + "x_py.txt");
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"predict:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
         //clock_gettime(CLOCK_MONOTONIC, &start);
-		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), 2.5, nelx, nely, nelz, n, nel);
+		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), 3.2, nelx, nely, nelz, n, nel);
 		cudaDeviceSynchronize();
 		cuda_error_check;
+		//savegmat(dSdx, outpath + "dSdx_py_filtered.txt");
 		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
         
-        sk.download(sk_h.data());
+        //sk.download(sk_h.data());
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-		solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h/*, U*/);
+		//solvefem(ikfree_h, jkfree_h, sk_h, freeidx_h, freedofs_h, F_h/*, U*/);
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
         cout<<"solvefem:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -154,7 +160,7 @@ void solve_g(
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
-        solvefem_g(/*ikfree, jkfree, sk, freeidx, freedofs, F, U*/);
+        //solvefem_g(/*ikfree, jkfree, sk, freeidx, freedofs, F, U*/);
 		solvefemsp_g();
 #ifdef __linux__
         clock_gettime(CLOCK_MONOTONIC, &end);
@@ -182,6 +188,7 @@ void solve_g(
 
 		if(iter>1&&std::abs(flist[iter-2]-f)<0.0001)
 		{
+			cout << "Converged at iteration " << iter - 1 << endl;
 			flist[iter-1]=f;
 			break;
 		}
@@ -207,7 +214,7 @@ void solve_g(
         //savegmat(x,outpath+"xin.txt");
         //savegmat(xmin,outpath+"xmin.txt");
         //savegmat(xmax,outpath+"xmax.txt");
-        //savegmat(dfdx,outpath+"dfdx.txt");
+        //savegmat(dfdx,outpath+"dfdx_py.txt");
         //savegmat(g,outpath+"g.txt");
         //savegmat(dgdx,outpath+"dgdx.txt");
 
@@ -223,6 +230,7 @@ void solve_g(
 #endif
         //savegmat(lowg,outpath+"low.txt");
         //savegmat(uppg,outpath+"upp.txt");
+		//savegmat(x, outpath + "xout.txt");
 
         filter(x);
 
@@ -239,8 +247,8 @@ void solve_g(
 			savegmat(x, outpath + "x" + to_string(iter) + ".txt");
 		}
 
-		if (iter == 3)
-			break;
+		//if (iter == 3)
+			//break;
 	}
 	savearr(outpath + "x0.txt", x_h, n);
     savegmat(x, outpath + "xfinal.txt");

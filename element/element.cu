@@ -12,7 +12,7 @@ namespace py = pybind11;
 
 //gpumat<double> coef_g(576, 9);
 double* x_host = nullptr;
-
+py::scoped_interpreter guard{};
 
 //void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module model)
 //{
@@ -74,31 +74,29 @@ py::array_t<T> _ptr_to_arrays_1d(T* data, py::ssize_t col) {
 	));
 }
 
-void predict_py(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel)
+void predict_py(gmatd& x, gmatd& S, gmatd& dSdx, int& nel)
 {
 	if (!x_host)
 		x_host = (double*)malloc(4 * nel * sizeof(double));
+	x.resize(nel, 4);
 	x.transpose().download(x_host);
-	static vector<double> S_h(9 * nel);
-	static vector<double> dSdx_h(36 * nel);
+	x.resize(4 * nel, 1);
 	
-	static py::scoped_interpreter guard{};
 	py::module sys = py::module::import("sys");
 	sys.attr("path").attr("append")("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop");
-	py::print(sys.attr("path"));
+	//py::print(sys.attr("path"));
 
-	static auto input = _ptr_to_arrays_1d(x_host, 4 * nel);
-	//py::module model = py::module::import("test11");
-	PyObject* pModule = PyImport_ImportModule("test11");
-	if (!pModule)
-	{
-		PyErr_Print();
-	}
+	auto input = _ptr_to_arrays_1d(x_host, 4 * nel);
+	py::module model = py::module::import("calsds");
 
-	//py::tuple rst = model.attr("predict")(input,nel,4);
-	//auto y = rst[0].cast<py::array_t<double>>();
-	//auto J = rst[1].cast<py::array_t<double>>();
+	py::tuple rst = model.attr("predict")(input,nel,4);
+	auto y = rst[0].cast<py::array_t<double>>();
+	auto J = rst[1].cast<py::array_t<double>>();
 
+	auto bufy = y.unchecked<1>();
+	auto bufJ = J.unchecked<1>();
+	S.set_by_index(0, 9 * nel, bufy.data(0), cudaMemcpyHostToDevice);
+	dSdx.set_by_index(0, 36 * nel, bufJ.data(0), cudaMemcpyHostToDevice);
 }
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)
