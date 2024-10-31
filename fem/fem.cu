@@ -7,11 +7,11 @@
 //gpumat<double> F;
 extern float my_erfinvf(float a);
 
-extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, temp, coef2, xold1g, xold2g, lowg, uppg;
+extern gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, U, temp, coef2, xold1g, xold2g, lowg, uppg;
 extern gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 
-gpumat<int> idxmap, ikf_squeez, jkf_squeez, permutation;
-gpumat<double> skf_squeez, skf_sorted;
+extern gpumat<int> idxmap, ikf_squeez, jkf_squeez, permutation;
+extern gpumat<double> skf_squeez, skf_sorted;
 
 template<typename scalar>
 void printgmat(const gpumat<scalar>& v)

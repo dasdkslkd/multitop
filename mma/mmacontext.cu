@@ -7,9 +7,11 @@
 #include "time.h"
 #endif
 
-gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, dskdx, U, coef2, xold1g, xold2g, lowg, uppg;
+gpumat<double> x, dfdx, g, dgdx, xmin, xmax, F, S, dSdx, sk, U, coef2, xold1g, xold2g, lowg, uppg;
 gpumat<int> freedofs, freeidx, ik, jk, ikfree, jkfree;
 gpumat<double> H;
+gpumat<int> idxmap, ikf_squeez, jkf_squeez, permutation;
+gpumat<double> skf_squeez, skf_sorted;
 
 template<typename T>
 void savegmat(gpumat<T>& v, string filename)
@@ -142,7 +144,7 @@ void solve_g(
 		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), r_filter, nelx, nely, nelz, n, nel);
 		cudaDeviceSynchronize();
 		cuda_error_check;
-		savegmat(dSdx, outpath + "dSdx_py_filtered.txt");
+		//savegmat(dSdx, outpath + "dSdx_py_filtered.txt");
 		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
@@ -254,4 +256,6 @@ void solve_g(
 	savearr(outpath + "x0.txt", x_h, n);
     savegmat(x, outpath + "xfinal.txt");
 	savevec(outpath + "obj.txt", flist);
+
+	x.clear(); dfdx.clear(); g.clear(); dgdx.clear(); xmin.clear(); xmax.clear(); F.clear(); S.clear(); dSdx.clear(); sk.clear(); U.clear(); coef2.clear(); xold1g.clear(); xold2g.clear(); lowg.clear(); uppg.clear(); freedofs.clear(); freeidx.clear(); ik.clear(); jk.clear(); ikfree.clear(); jkfree.clear(); H.clear(); idxmap.clear(); ikf_squeez.clear(); jkf_squeez.clear(); permutation.clear(); skf_squeez.clear(); skf_sorted.clear();
 }
