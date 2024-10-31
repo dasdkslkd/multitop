@@ -75,6 +75,7 @@ void solve_g(
 	double* temp_h, Eigen::MatrixXd& coef_h, /*torch::jit::Module model,*/string outpath)
 {
 	//printf("1");
+	double r_filter = 1.5;
 	double change = 1.;
 	int iter = 0;
 	double minf = 1e9;
@@ -112,7 +113,7 @@ void solve_g(
 
 	H.resize(n, 1);
 	auto [grid, block] = kernel_param(n);
-	build_sensitivity_filter_kernel << <grid, block >> > (H.data(), 3.2, nelx, nely, nelz, n, nel);
+	build_sensitivity_filter_kernel << <grid, block >> > (H.data(), r_filter, nelx, nely, nelz, n, nel);
 	cudaDeviceSynchronize();
 	cuda_error_check;
 	//savegmat(H, outpath + "H.txt");
@@ -138,10 +139,10 @@ void solve_g(
         cout<<"predict:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;
 #endif
         //clock_gettime(CLOCK_MONOTONIC, &start);
-		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), 3.2, nelx, nely, nelz, n, nel);
+		sensitivity_filter_kernel << <grid, block >> > (x.data(), H.data(), dSdx.data(), r_filter, nelx, nely, nelz, n, nel);
 		cudaDeviceSynchronize();
 		cuda_error_check;
-		//savegmat(dSdx, outpath + "dSdx_py_filtered.txt");
+		savegmat(dSdx, outpath + "dSdx_py_filtered.txt");
 		elastisity(S, coef2, sk);
 		//clock_gettime(CLOCK_MONOTONIC, &end);
         //cout<<"elast:"<<(double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec)<<endl;

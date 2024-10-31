@@ -101,18 +101,7 @@ void predict_py(gmatd& x, gmatd& S, gmatd& dSdx, int& nel)
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk)
 {
-	//double* S_h = new double[S.size()];
-	//S.download(S_h);
-	//double* coef_test = new double[576 * 9];
-	//double* sktest = new double[sk.size()];
-	//coef.download(coef_test);
-	//sk.download(sktest);
-	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\S.csv", S_h, S.size());
-	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coeftest.csv", coef_test, 576 * 9);
-	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-pre.csv", sktest, sk.size());
 	sk = matprod(coef, S);
-	//sk.download(sktest);
-	//savearr("D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\sk-post.csv", sktest, sk.size());
 }
 
 void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, std::vector<int32_t>& idx, const int& i, const int& nel)
@@ -128,9 +117,6 @@ void sensitivity(const gmatd& dSdx, const gmatd& coef, gmatd& dsKdx, std::vector
 	dsKdx.set_by_index(coef.rows() * r, coef.rows(), tmp2.data(), cudaMemcpyDeviceToDevice);
 	for (int kk = 0; kk < coef.rows(); ++kk)
 		idx[kk] = coef.rows() * r + kk;
-	//temp.set_by_index(9 * r, 9, dSdx.data() + 36 * r + 9 * q, cudaMemcpyDeviceToDevice);
-	//dsKdx = std::move(matprod(coef, temp));
-	//temp.set_from_value(0.);
 }
 
 void filter(gmatd& v)
@@ -138,7 +124,6 @@ void filter(gmatd& v)
 
 	double* ptr = v.data();
 	size_t grid, block;
-	//make_kernel_param(&grid, &block, size(), 512);
 	block = 512;
 	grid = (v.size() + 512 - 1) / 512;
 	size_t r = v.rows();

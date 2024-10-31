@@ -349,12 +349,12 @@ void computefdf(/*gpumat<double>& U, gpumat<double>& dSdx, gpumat<double>& dskdx
 	dim3 grid((dfdx.size() + block.x - 1) / block.x, (coef2.rows() + block.y - 1) / block.y);
 	dfdx.set_from_value(0);
 
-	savegmat(U, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\U.txt");
-	savegmat(dSdx, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dSdx.txt");
-	savegmat(coef2, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\coef2.txt");
-	savegmat(iknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\iknz.txt");
-	savegmat(jknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\jknz.txt");
-	savegmat(dskdx_all, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dskdx_all.txt");
+	//savegmat(U, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\U.txt");
+	//savegmat(dSdx, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dSdx.txt");
+	//savegmat(coef2, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\coef2.txt");
+	//savegmat(iknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\iknz.txt");
+	//savegmat(jknz, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\jknz.txt");
+	//savegmat(dskdx_all, "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\output\\dskdx_all.txt");
 
 	caldfdx_kernel << <grid, block >> > (U.data(), iknz.data(), jknz.data(), dskdx_all.data(), dfdx.data(), coef2.rows(), dfdx.size(), nel);
 	cudaDeviceSynchronize();

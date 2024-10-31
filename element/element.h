@@ -51,7 +51,7 @@ using namespace std;
 inline Eigen::MatrixXd coef;
 inline void readcoef()
 {
-	string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef.csv";
+	string fname = "D:\\Workspace\\tpo\\ai\\spinodal\\c++\\multitop\\coef2.csv";
 	ifstream infile(fname, ios::in);
 	assert(infile.is_open());
 	vector<double> data;
