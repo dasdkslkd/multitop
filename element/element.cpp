@@ -1,36 +1,35 @@
 #include "element.h"
 
-//inline void data_process(const double &r, const double &t1, const double &t2, const double &t3, at::Tensor& rst)
-//{
-//	rst = move(torch::tensor({ double((r - 0.3) / 0.4),double(t1 / 90),double(t2 / 90),double(t3 / 90) }));
-//}
+inline void data_process(const double &r, const double &t1, const double &t2, const double &t3, at::Tensor& rst)
+{
+	rst = move(torch::tensor({ double((r - 0.3) / 0.4),double(t1 / 90),double(t2 / 90),double(t3 / 90) }));
+}
 
 void spinodal::predict(const double* x, double* S, double* dSdx)
 {
-	printf("no predict\n");
-////#pragma omp parallel for
-//	for (int i = 0; i < nel; ++i)
-//	{
-//		at::Tensor input;
-//		data_process(x[i], x[i + nel] * 180 / PI, x[i + 2 * nel] * 180 / PI, x[i + 3 * nel] * 180 / PI, input);
-//		input.requires_grad_();
-//		auto output = model({ input }).toTensor();
-//		auto data = output.data_ptr<double>();
-//		memcpy(S + 9 * i, data, 9 * sizeof(double));
-//		for (int j = 0; j < 9; ++j)
-//		{
-//			auto xx = input.clone();
-//			xx.retain_grad();
-//			auto y = model({ xx }).toTensor();
-//			auto t = torch::zeros({ 9 });
-//			t[j] = 1;
-//			y.backward(t);
-//			dSdx[36 * i + j] = xx.grad()[0].item().toDouble();
-//			dSdx[36 * i + j + 9] = xx.grad()[1].item().toDouble();
-//			dSdx[36 * i + j + 18] = xx.grad()[2].item().toDouble();
-//			dSdx[36 * i + j + 27] = xx.grad()[3].item().toDouble();
-//		}
-//	}
+//#pragma omp parallel for
+	for (int i = 0; i < nel; ++i)
+	{
+		at::Tensor input;
+		data_process(x[i], x[i + nel] * 180 / PI, x[i + 2 * nel] * 180 / PI, x[i + 3 * nel] * 180 / PI, input);
+		input.requires_grad_();
+		auto output = model({ input }).toTensor();
+		auto data = output.data_ptr<double>();
+		memcpy(S + 9 * i, data, 9 * sizeof(double));
+		for (int j = 0; j < 9; ++j)
+		{
+			auto xx = input.clone();
+			xx.retain_grad();
+			auto y = model({ xx }).toTensor();
+			auto t = torch::zeros({ 9 });
+			t[j] = 1;
+			y.backward(t);
+			dSdx[36 * i + j] = xx.grad()[0].item().toDouble();
+			dSdx[36 * i + j + 9] = xx.grad()[1].item().toDouble();
+			dSdx[36 * i + j + 18] = xx.grad()[2].item().toDouble();
+			dSdx[36 * i + j + 27] = xx.grad()[3].item().toDouble();
+		}
+	}
 }
 
 void spinodal::elasticity(double* S, Eigen::VectorXd& sk)

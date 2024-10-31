@@ -11,13 +11,9 @@ set(CMAKE_CXX_STANDARD 17)
 # include paths
 # set(Eigen3_DIR D:\\Environment\\eigen-3.4.0\\cmake)
 include_directories(D:\\Environment\\eigen-3.4.0\\build\\include)
-set(CMAKE_PREFIX_PATH C:/Users/xyz/AppData/Roaming/Python/Python310/site-packages/pybind11/share/cmake/pybind11)
-message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 # package
 enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
-find_package(Python3 REQUIRED COMPONENTS Development Interpreter)
-find_package(pybind11 REQUIRED)
 # find_package(CUDA REQUIRED)
 # find_library(CUDA_DRIVER_LIBRARY
 #              NAMES cuda_driver cuda
@@ -34,7 +30,7 @@ find_package(pybind11 REQUIRED)
 # endif ()
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 #add_subdirectory(mma-g)
-#find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch)
+find_package(Torch REQUIRED PATHS D:\\Environment\\libtorch)
 find_package(OpenMP REQUIRED)
 
 
@@ -82,23 +78,17 @@ target_link_libraries(culib PRIVATE CUDA::cuda_driver)
 target_link_libraries(culib PRIVATE CUDA::cusolver)
 
 target_link_libraries(culib PRIVATE Eigen3::Eigen)
-#target_link_libraries(culib PRIVATE ${TORCH_LIBRARIES})
-target_link_libraries(culib PRIVATE pybind11::module)
-target_link_libraries(culib PRIVATE ${Python3_LIBRARIES})
-target_include_directories(culib PRIVATE ${Python3_INCLUDE_DIRS})
+target_link_libraries(culib PRIVATE ${TORCH_LIBRARIES})
 
 add_executable(${PROJECT_NAME} ${sourcefile})
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_ENVIRONMENT "PATH=D:\\Environment\\Cuda\\bin;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugCRT;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugOpenMP;C:\\Users\\xyz\\AppData\\Local\\Programs\\Python\\Python310")
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_ENVIRONMENT "PATH=D:\\Environment\\Cuda\\bin;D:\\Environment\\libtorch\\lib;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugCRT;D:\\IDE\\VS2022\\VC\\Redist\\MSVC\\14.36.32532\\debug_nonredist\\x64\\Microsoft.VC143.DebugOpenMP")
 
 # link	
-#target_link_libraries(${PROJECT_NAME} PRIVATE ${TORCH_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${TORCH_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PRIVATE Eigen3::Eigen)
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
 #target_link_libraries(${PROJECT_NAME} PRIVATE mma)
-target_link_libraries(${PROJECT_NAME} PRIVATE pybind11::module)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${Python3_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE culib)
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DMMA_WITH_OPENMP)
 

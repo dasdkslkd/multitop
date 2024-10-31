@@ -3,14 +3,12 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-//#include <torch/script.h>
+#include <torch/script.h>
 #include "../culib/gMat.cuh"
 #define PI acos(-1.)
 using gmatd = gpumat<double>;
 
-//void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module model);
-
-void predict_py(gmatd& x, gmatd& S, gmatd& dSdx, int& nel);
+void predict(const gmatd& x, gmatd& S, gmatd& dSdx, int& nel, torch::jit::Module model);
 
 void elastisity(const gmatd& S, const gmatd& coef, gmatd& sk);
 
