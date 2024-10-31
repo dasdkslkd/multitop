@@ -124,7 +124,7 @@ void Femproblem::solvefem()
 	cg.compute(K);
 	U(freedofs) = cg.solve(F(freedofs));
 	//cout << U << endl;
-	cout << cg.iterations() << ' ' << cg.error() << endl;
+	std::cout << cg.iterations() << ' ' << cg.error() << endl;
 }
 
 void Femproblem::computefdf(double& f, double* dfdx)
